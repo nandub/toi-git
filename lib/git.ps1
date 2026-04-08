@@ -137,6 +137,27 @@ function Convert-RemoteToBrowseUrl {
     return $RemoteUrl -replace '\.git$', ''
 }
 
+function Get-RemoteDefaultBranchRef {
+    $defaultBranch = Get-DefaultBranchName
+    $remoteRef = "refs/remotes/origin/$defaultBranch"
+
+    if (Test-RefExists -RefName $remoteRef) {
+        return "origin/$defaultBranch"
+    }
+
+    return $null
+}
+
+function Get-DefaultBranchComparisonRef {
+    $defaultBranch = Get-DefaultBranchName
+
+    if (Test-RefExists -RefName "refs/heads/$defaultBranch") {
+        return $defaultBranch
+    }
+
+    return Get-RemoteDefaultBranchRef
+}
+
 function Get-ToiConfig {
     $repoRoot = Get-RepositoryRoot
     $configPath = Join-Path $repoRoot 'toi.json'
@@ -180,7 +201,9 @@ function Get-DefaultBranchName {
 
 function Get-ProtectedBranches {
     $config = Get-ToiConfig
-    $branches = @($config.protectBranches + (Get-DefaultProtectedBranches))
+    $configured = @($config.protectBranches)
+    $defaults = @(Get-DefaultProtectedBranches)
+    $branches = @($configured + $defaults)
     return $branches | Sort-Object -Unique
 }
 
@@ -309,7 +332,7 @@ function Get-BranchBaseRef {
         [switch]$Stack
     )
 
-    $defaultBranch = Get-DefaultBranchName
+    $defaultBranch = Get-DefaultBranchComparisonRef
     $currentBranch = Get-CurrentBranchName
 
     if ($Stack) {
@@ -321,6 +344,21 @@ function Get-BranchBaseRef {
     }
 
     return $defaultBranch
+}
+
+function Get-BranchTypePattern {
+    $types = Get-AllowedBranchTypes | ForEach-Object { [regex]::Escape($_) }
+    return '^(' + ($types -join '|') + ')/'
+}
+
+function Test-MatchesBranchConvention {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName
+    )
+
+    $pattern = Get-BranchTypePattern
+    return $BranchName -match $pattern
 }
 
 function Get-AheadBehind {
@@ -364,4 +402,31 @@ function Get-CommitRangeSummary {
     }
 
     return @($result.Output | Where-Object { $_ -and $_.Trim() })
+}
+
+function Get-BranchBrowseUrl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName
+    )
+
+    return "$RepositoryUrl/tree/$BranchName"
+}
+
+function Get-CompareBrowseUrl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BaseBranch,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HeadBranch
+    )
+
+    return "$RepositoryUrl/compare/$BaseBranch...${HeadBranch}?expand=1"
 }

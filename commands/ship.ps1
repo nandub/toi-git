@@ -5,6 +5,7 @@ function Invoke-ToiCommand {
 
     $branch = Get-CurrentBranchName
     $defaultBranch = Get-DefaultBranchName
+    $defaultCompareRef = Get-DefaultBranchComparisonRef
     $status = Get-StatusSummary
     $upstreamRef = Get-UpstreamRef
     $protectedBranches = Get-ProtectedBranches
@@ -23,17 +24,17 @@ function Invoke-ToiCommand {
         $notes.Add('Use `.\toi.ps1 save` or commit/stage intentionally first.')
     }
 
-    if ($branch -notmatch '^(feature|fix|hotfix|release|chore)/') {
+    if (-not (Test-MatchesBranchConvention -BranchName $branch) -and $protectedBranches -notcontains $branch) {
         $notes.Add('Branch name is outside TOI conventions.')
     }
 
-    if ($branch -ne $defaultBranch -and (Test-RefExists -RefName "refs/heads/$defaultBranch")) {
-        $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultBranch
+    if ($branch -ne $defaultBranch -and $defaultCompareRef) {
+        $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultCompareRef
         if ($defaultTracking -and $defaultTracking.RightAhead -gt 0) {
-            $notes.Add("Branch is behind $defaultBranch by $($defaultTracking.RightAhead) commit(s).")
+            $blockingIssues.Add("Branch is behind $defaultBranch by $($defaultTracking.RightAhead) commit(s).")
         }
 
-        $range = Get-CommitRangeSummary -BaseRef $defaultBranch -HeadRef 'HEAD'
+        $range = Get-CommitRangeSummary -BaseRef $defaultCompareRef -HeadRef 'HEAD'
         Write-Section 'Commits Since Base'
         if ($range.Count -eq 0) {
             Write-InfoLine 'No commits ahead of the default branch.'
@@ -54,13 +55,22 @@ function Invoke-ToiCommand {
                 $blockingIssues.Add('Branch is behind its upstream.')
             }
 
-            if ($tracking.LeftAhead -eq 0 -and $tracking.RightAhead -eq 0) {
+            if ($tracking.LeftAhead -eq 0 -and $tracking.RightAhead -eq 0 -and $branch -ne $defaultBranch) {
                 $notes.Add('No local commits to push.')
+            }
+
+            if ($tracking.LeftAhead -gt 0 -and $branch -ne $defaultBranch) {
+                $notes.Add('Branch has local commits ready to push or review.')
             }
         }
     }
     else {
-        $notes.Add('No upstream configured yet. First push should use `git push -u origin <branch>`.')
+        if ($branch -eq $defaultBranch) {
+            $notes.Add('Default branch has no upstream configured.')
+        }
+        else {
+            $notes.Add('No upstream configured yet. First push should use `git push -u origin <branch>`.')
+        }
     }
 
     Write-Section 'Assessment'

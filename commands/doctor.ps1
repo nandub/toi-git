@@ -5,6 +5,7 @@ function Invoke-ToiCommand {
 
     $branch = Get-CurrentBranchName
     $defaultBranch = Get-DefaultBranchName
+    $defaultCompareRef = Get-DefaultBranchComparisonRef
     $upstreamRef = Get-UpstreamRef
     $status = Get-StatusSummary
     $protectedBranches = Get-ProtectedBranches
@@ -28,7 +29,7 @@ function Invoke-ToiCommand {
         Write-Host "Untracked entries: $($status.Untracked)"
     }
 
-    if ($branch -match '^(feature|fix|hotfix|release|chore)/') {
+    if (Test-MatchesBranchConvention -BranchName $branch) {
         Write-SuccessLine 'Branch name matches TOI conventions.'
     }
     elseif ($protectedBranches -notcontains $branch) {
@@ -54,6 +55,10 @@ function Invoke-ToiCommand {
             if ($tracking.LeftAhead -gt 0) {
                 $recommendations.Add('Branch has local commits ready to push or review.')
             }
+
+            if ($tracking.LeftAhead -eq 0 -and $tracking.RightAhead -eq 0 -and $branch -eq $defaultBranch) {
+                $recommendations.Add("Default branch is aligned with $upstreamRef.")
+            }
         }
     }
     else {
@@ -61,8 +66,8 @@ function Invoke-ToiCommand {
         $recommendations.Add('Push with `git push -u origin <branch>` when this branch is ready.')
     }
 
-    if ($branch -ne $defaultBranch -and (Test-RefExists -RefName "refs/heads/$defaultBranch")) {
-        $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultBranch
+    if ($branch -ne $defaultBranch -and $defaultCompareRef) {
+        $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultCompareRef
         if ($defaultTracking -and $defaultTracking.RightAhead -gt 0) {
             Write-WarningLine "Branch is behind $defaultBranch by $($defaultTracking.RightAhead) commit(s)."
             $recommendations.Add('Rebase or sync against the default branch before shipping.')
@@ -76,5 +81,15 @@ function Invoke-ToiCommand {
         return
     }
 
-    $recommendations | Select-Object -Unique | ForEach-Object { Write-Host "- $_" }
+    $recommendations |
+        Select-Object -Unique |
+        Where-Object { $_ -ne "Default branch is aligned with $upstreamRef." } |
+        ForEach-Object { Write-Host "- $_" }
+
+    if ($branch -eq $defaultBranch -and $upstreamRef) {
+        $tracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $upstreamRef
+        if ($tracking -and $tracking.LeftAhead -eq 0 -and $tracking.RightAhead -eq 0) {
+            Write-InfoLine "Default branch is aligned with $upstreamRef."
+        }
+    }
 }

@@ -58,6 +58,8 @@ TOI Git reads `toi.json` from the repository root.
 .\toi.ps1 undo
 .\toi.ps1 undo -Soft
 .\toi.ps1 open
+.\toi.ps1 open branch
+.\toi.ps1 open compare
 .\toi.ps1 worktree list
 .\toi.ps1 worktree add ..\Toi-feature feature/demo
 .\toi.ps1 stack new api-client

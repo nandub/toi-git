@@ -175,7 +175,6 @@ function Invoke-ToiCommand {
         @{ Name = 'Install';   Args = @('install', 'profile', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Install Status'; Args = @('install', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 },
-        @{ Name = 'Release Notes Current State'; Args = @('release', 'notes', 'current-state'); TimeoutSeconds = 20 },
         @{ Name = 'PR Ready'; Args = @('pr', 'ready', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'PR Merge'; Args = @('pr', 'merge', '-DryRun'); TimeoutSeconds = 15 }
     )
@@ -183,6 +182,44 @@ function Invoke-ToiCommand {
     foreach ($commandCheck in $commandChecks) {
         $result = Invoke-CommandCheck -Name $commandCheck.Name -CommandArgs $commandCheck.Args -TimeoutSeconds $commandCheck.TimeoutSeconds
         Add-CheckResult -Name $commandCheck.Name -Success $result.Success -Detail $result.Detail
+    }
+
+    $publishDryRunResult = Invoke-CommandCheck -Name 'Publish Dry Run JSON' -CommandArgs @('publish', '-DryRun', '-Json') -TimeoutSeconds 15
+    if (-not $publishDryRunResult.Success) {
+        Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $publishDryRunResult.Detail
+    }
+    else {
+        try {
+            $publishDryRunParsed = $publishDryRunResult.Stdout | ConvertFrom-Json
+            if (-not ($publishDryRunParsed.PSObject.Properties.Name -contains 'branch')) {
+                throw "Missing field 'branch'."
+            }
+
+            Add-CheckResult -Name 'Publish Dry Run JSON' -Success $true -Detail 'Publish dry-run JSON returned a structured response.'
+        }
+        catch {
+            Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $_.Exception.Message
+        }
+    }
+
+    $releaseNotesFile = Join-Path $root (Get-ReleaseNotesFile)
+    $releaseNotesExisted = Test-Path -LiteralPath $releaseNotesFile
+    $releaseNotesBackup = $null
+    if ($releaseNotesExisted) {
+        $releaseNotesBackup = [System.IO.File]::ReadAllBytes($releaseNotesFile)
+    }
+
+    try {
+        $releaseNotesResult = Invoke-CommandCheck -Name 'Release Notes Current State' -CommandArgs @('release', 'notes', 'current-state') -TimeoutSeconds 20
+        Add-CheckResult -Name 'Release Notes Current State' -Success $releaseNotesResult.Success -Detail $releaseNotesResult.Detail
+    }
+    finally {
+        if ($releaseNotesExisted) {
+            [System.IO.File]::WriteAllBytes($releaseNotesFile, $releaseNotesBackup)
+        }
+        elseif (Test-Path -LiteralPath $releaseNotesFile) {
+            Remove-Item -LiteralPath $releaseNotesFile -Force
+        }
     }
 
     $invalidReleaseSnapshotResult = Invoke-CommandCheck -Name 'Release Tag Current State' -CommandArgs @('release', 'tag', 'current-state') -TimeoutSeconds 15

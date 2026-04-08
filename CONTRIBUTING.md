@@ -11,6 +11,8 @@ Normal local loop:
 .\tests\self-check.ps1
 ```
 
+`.\toi.ps1 start ...` should stay local-first. Do not make branch creation depend on a remote fetch or live GitHub auth unless that behavior is explicitly opt-in.
+
 If you change JSON-producing commands or contract descriptions:
 
 ```powershell

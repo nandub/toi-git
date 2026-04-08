@@ -114,7 +114,15 @@ function Invoke-ToiCommand {
         $gitArguments = if ($dryRun) { @('push', '--dry-run', '-u', 'origin', $branch) } else { @('push', '-u', 'origin', $branch) }
     }
 
-    $pushResult = Invoke-Git -GitArguments $gitArguments
+    if ($dryRun) {
+        $pushResult = [PSCustomObject]@{
+            Output = @('git ' + ($gitArguments -join ' '))
+            ExitCode = 0
+        }
+    }
+    else {
+        $pushResult = Invoke-GitInteractive -GitArguments $gitArguments
+    }
 
     if (-not $json) {
         $pushResult.Output | ForEach-Object { Write-Host $_ }
@@ -150,6 +158,7 @@ function Invoke-ToiCommand {
     Write-InfoLine "PR URL: $prUrl"
 
     if ($dryRun) {
+        Write-InfoLine ('Planned push: git ' + ($gitArguments -join ' '))
         return
     }
 

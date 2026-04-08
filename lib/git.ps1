@@ -27,6 +27,10 @@ function Invoke-Git {
         $startInfo.RedirectStandardOutput = $true
         $startInfo.RedirectStandardError = $true
         $startInfo.CreateNoWindow = $true
+        $currentLocation = Get-Location
+        if ($currentLocation -and $currentLocation.Provider -and $currentLocation.Provider.Name -eq 'FileSystem') {
+            $startInfo.WorkingDirectory = $currentLocation.ProviderPath
+        }
 
         $configuredSshCommand = git config --global --get core.sshCommand 2>$null
         if (-not $configuredSshCommand) {
@@ -66,14 +70,71 @@ function Invoke-Git {
     }
 }
 
+function Invoke-GitInteractive {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$GitArguments,
+
+        [switch]$AllowFailure
+    )
+
+    $configuredSshCommand = git config --global --get core.sshCommand 2>$null
+    $previousSshCommand = $null
+    $hadSshCommand = $false
+
+    if (-not $configuredSshCommand) {
+        if (Test-Path Env:GIT_SSH_COMMAND) {
+            $previousSshCommand = $env:GIT_SSH_COMMAND
+            $hadSshCommand = $true
+        }
+
+        $env:GIT_SSH_COMMAND = 'C:/Windows/System32/OpenSSH/ssh.exe'
+    }
+
+    try {
+        & git @GitArguments
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        if (-not $configuredSshCommand) {
+            if ($hadSshCommand) {
+                $env:GIT_SSH_COMMAND = $previousSshCommand
+            }
+            else {
+                Remove-Item Env:GIT_SSH_COMMAND -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
+    if (-not $AllowFailure -and $exitCode -ne 0) {
+        throw "Git command failed with exit code $exitCode."
+    }
+
+    return [PSCustomObject]@{
+        Output   = @()
+        ExitCode = $exitCode
+    }
+}
+
 function Test-InGitRepository {
     $result = Invoke-Git -GitArguments @('rev-parse', '--is-inside-work-tree') -AllowFailure
-    return $result.ExitCode -eq 0 -and ($result.Output | Select-Object -First 1) -eq 'true'
+    return [PSCustomObject]@{
+        Success = ($result.ExitCode -eq 0 -and ($result.Output | Select-Object -First 1) -eq 'true')
+        Result = $result
+    }
 }
 
 function Assert-InGitRepository {
-    if (-not (Test-InGitRepository)) {
-        throw 'Run this command inside a Git repository.'
+    $repositoryCheck = Test-InGitRepository
+    if (-not $repositoryCheck.Success) {
+        $detail = if ($repositoryCheck.Result.Output) {
+            ($repositoryCheck.Result.Output -join [Environment]::NewLine)
+        }
+        else {
+            'Run this command inside a Git repository.'
+        }
+
+        throw $detail
     }
 }
 

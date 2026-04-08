@@ -11,7 +11,7 @@ function Invoke-ToiCommand {
         $message = 'Checkpoint or clean the working tree with `.\\toi.ps1 save`.'
     }
     elseif ($snapshot.Branch -eq $snapshot.DefaultBranch) {
-        $message = 'Create a typed branch with `.\\toi.ps1 start feature <name>`.'
+        $message = 'Create a typed branch with `toi start feature <name>`.'
     }
     elseif ($snapshot.RequireBranchNote -and -not $snapshot.Note) {
         $message = 'Add a branch note with `.\\toi.ps1 note set <text>`.'

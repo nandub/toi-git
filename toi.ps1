@@ -46,7 +46,7 @@ $commandMap = @{
 
 function Show-Help {
     Write-Section 'TOI Git'
-    Write-Host 'Usage: .\toi.ps1 <command> [args]'
+    Write-Host 'Usage: toi <command> [args]'
     Write-Host ''
     Write-Host 'Commands:'
     Write-Host '  status        Show compact branch and working tree status'

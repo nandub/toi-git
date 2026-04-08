@@ -744,7 +744,7 @@ function Get-ToiMissingPullRequestMessage {
         $BranchName = Get-CurrentBranchName
     }
 
-    return "No pull request exists for branch '$BranchName'. Create one from a feature branch with '.\toi.ps1 publish -Pr' or 'gh pr create --fill --web'."
+    return "No pull request exists for branch '$BranchName'. Create one from a feature branch with 'toi publish -Pr' or 'gh pr create --fill --web'."
 }
 
 function Test-ToiMissingPullRequestMessage {
@@ -1748,11 +1748,11 @@ function Get-ToiNextActions {
     $nextActions = New-Object System.Collections.Generic.List[string]
 
     if ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0) {
-        $nextActions.Add('Clean up or checkpoint the working tree with `.\\toi.ps1 save`.')
+        $nextActions.Add('Clean up or checkpoint the working tree with `toi save`.')
     }
 
     if ($Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Published) {
-        $nextActions.Add('Publish the branch with `.\\toi.ps1 publish` when it is ready.')
+        $nextActions.Add('Publish the branch with `toi publish` when it is ready.')
     }
 
     if ($Snapshot.Branch -ne $Snapshot.DefaultBranch -and $Snapshot.Published) {
@@ -1760,20 +1760,20 @@ function Get-ToiNextActions {
             $nextActions.Add("PR next step: $($Snapshot.PullRequestGate.recommended_command)")
         }
         else {
-            $nextActions.Add('Open the PR path with `.\\toi.ps1 open pr`.')
+            $nextActions.Add('Open the PR path with `toi open pr`.')
         }
     }
 
     if ($Snapshot.Branch -eq $Snapshot.DefaultBranch -and $Snapshot.Status.ChangedFiles -eq 0) {
-        $nextActions.Add('Create a typed branch with `.\\toi.ps1 start feature <name>` for the next change.')
+        $nextActions.Add('Create a typed branch with `toi start feature <name>` for the next change.')
     }
 
     if ($Snapshot.RequireBranchNote -and $Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Note) {
-        $nextActions.Add('Add a branch note with `.\\toi.ps1 note set <text>`.')
+        $nextActions.Add('Add a branch note with `toi note set <text>`.')
     }
 
     if ($Snapshot.UpstreamTracking -and $Snapshot.UpstreamTracking.RightAhead -gt 0) {
-        $nextActions.Add('Sync the branch with `.\\toi.ps1 sync` before pushing or opening a PR.')
+        $nextActions.Add('Sync the branch with `toi sync` before pushing or opening a PR.')
     }
 
     if ($Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.RightAhead -gt 0) {
@@ -1781,7 +1781,7 @@ function Get-ToiNextActions {
     }
 
     if (-not $Snapshot.ContractStatus.SnapshotMatches) {
-        $nextActions.Add('Refresh the committed contract snapshot with `.\\toi.ps1 schema -WriteSnapshot`.')
+        $nextActions.Add('Refresh the committed contract snapshot with `toi schema -WriteSnapshot`.')
     }
 
     return @($nextActions | Select-Object -Unique)
@@ -1849,16 +1849,16 @@ function Get-ToiDoctorRecommendations {
     $recommendations = New-Object System.Collections.Generic.List[string]
 
     if ($Snapshot.ProtectedBranches -contains $Snapshot.Branch -and ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0)) {
-        $recommendations.Add("Avoid doing feature work directly on '$($Snapshot.Branch)'. Create a branch with `.\\toi.ps1 start feature <name>`.")
+        $recommendations.Add("Avoid doing feature work directly on '$($Snapshot.Branch)'. Create a branch with `toi start feature <name>`.")
     }
 
     if ($Snapshot.RequireBranchNote -and $Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Note) {
-        $recommendations.Add('Add a branch note with `.\\toi.ps1 note set <text>`.')
+        $recommendations.Add('Add a branch note with `toi note set <text>`.')
     }
 
     if ($Snapshot.UpstreamTracking) {
         if ($Snapshot.UpstreamTracking.RightAhead -gt 0) {
-            $recommendations.Add('Run `.\\toi.ps1 sync` before pushing or opening a PR.')
+            $recommendations.Add('Run `toi sync` before pushing or opening a PR.')
         }
 
         if ($Snapshot.UpstreamTracking.LeftAhead -gt 0) {
@@ -1866,7 +1866,7 @@ function Get-ToiDoctorRecommendations {
         }
     }
     elseif ($Snapshot.Branch -ne $Snapshot.DefaultBranch) {
-        $recommendations.Add('Run `.\\toi.ps1 publish` when this branch is ready for review.')
+        $recommendations.Add('Run `toi publish` when this branch is ready for review.')
     }
 
     if ($Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.RightAhead -gt 0) {
@@ -1874,7 +1874,7 @@ function Get-ToiDoctorRecommendations {
     }
 
     if ($Snapshot.UpstreamRef -and $Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.LeftAhead -gt 0) {
-        $recommendations.Add('Open a PR with `.\\toi.ps1 open pr` when the branch is ready.')
+        $recommendations.Add('Open a PR with `toi open pr` when the branch is ready.')
     }
 
     return @($recommendations | Select-Object -Unique)
@@ -1896,11 +1896,11 @@ function Get-ToiShipAssessment {
 
     if ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0) {
         $blockingIssues.Add('Working tree is not clean enough for shipping.')
-        $notes.Add('Use `.\\toi.ps1 save` or commit/stage intentionally first.')
+        $notes.Add('Use `toi save` or commit/stage intentionally first.')
     }
 
     if (-not (Test-MatchesBranchConvention -BranchName $Snapshot.Branch) -and $Snapshot.ProtectedBranches -notcontains $Snapshot.Branch) {
-        $notes.Add('Branch name is outside .\\toi.ps1 conventions.')
+        $notes.Add('Branch name is outside TOI naming conventions.')
     }
 
     if ($Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.RightAhead -gt 0) {
@@ -1924,7 +1924,7 @@ function Get-ToiShipAssessment {
         $notes.Add('Default branch has no upstream configured.')
     }
     else {
-        $notes.Add('Branch is local only. Run `.\\toi.ps1 publish` to push it and set upstream.')
+        $notes.Add('Branch is local only. Run `toi publish` to push it and set upstream.')
     }
 
     if ($Snapshot.ValidationSuite.HasChecks) {

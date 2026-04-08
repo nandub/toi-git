@@ -56,7 +56,7 @@ function Invoke-ToiCommand {
     $repoRoot = Get-RepositoryRoot
     $toiPath = Join-Path $repoRoot 'toi.ps1'
     $moduleName = 'TOIGit'
-    $moduleVersion = '1.0.0'
+    $moduleVersion = (Import-PowerShellDataFile -LiteralPath (Join-Path $repoRoot 'TOIGit.psd1')).ModuleVersion
     $beginMarker = '# >>> TOI Git >>>'
     $endMarker = '# <<< TOI Git <<<'
 
@@ -76,7 +76,27 @@ function Invoke-ToiCommand {
             return $profilePath
         }
 
+        $currentHostProfile = $PROFILE.CurrentUserCurrentHost
+        $allHostsProfile = $PROFILE.CurrentUserAllHosts
+
+        if ((Test-Path -LiteralPath $currentHostProfile) -and (Test-ProfileHasSignatureBlock -Path $currentHostProfile)) {
+            if ($allHostsProfile -and -not [string]::Equals($currentHostProfile, $allHostsProfile, [System.StringComparison]::OrdinalIgnoreCase)) {
+                return $allHostsProfile
+            }
+        }
+
         return $PROFILE.CurrentUserCurrentHost
+    }
+
+    function Test-ProfileHasSignatureBlock {
+        param([string]$Path)
+
+        if (-not $Path -or -not (Test-Path -LiteralPath $Path)) {
+            return $false
+        }
+
+        $content = Get-Content -LiteralPath $Path -Raw
+        return $content -match '(?m)^# SIG # Begin signature block'
     }
 
     function Get-UserBinDirectory {
@@ -226,9 +246,20 @@ function Invoke-ToiCommand {
         $resolvedProfilePath = Get-ResolvedProfilePath
         $snippet = Get-InstallSnippet
         $existingContent = ''
+        $currentHostProfile = $PROFILE.CurrentUserCurrentHost
+        $fellBackFromSignedProfile = $false
+
+        if (-not $profilePath -and $currentHostProfile -and (Test-Path -LiteralPath $currentHostProfile) -and (Test-ProfileHasSignatureBlock -Path $currentHostProfile) -and
+            -not [string]::Equals($resolvedProfilePath, $currentHostProfile, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $fellBackFromSignedProfile = $true
+        }
 
         if (Test-Path -LiteralPath $resolvedProfilePath) {
             $existingContent = Get-Content -LiteralPath $resolvedProfilePath -Raw
+        }
+
+        if (Test-ProfileHasSignatureBlock -Path $resolvedProfilePath) {
+            throw "Profile '$resolvedProfilePath' contains a signature block. TOI Git will not modify signed profiles. Use '.\\toi.ps1 install module', '.\\toi.ps1 install user-bin', or choose an unsigned profile path with -ProfilePath."
         }
 
         $pattern = [regex]::Escape($beginMarker) + '.*?' + [regex]::Escape($endMarker)
@@ -246,6 +277,9 @@ function Invoke-ToiCommand {
             Write-Section 'Install'
             Write-InfoLine 'Mode: profile'
             Write-InfoLine "Profile path: $resolvedProfilePath"
+            if ($fellBackFromSignedProfile) {
+                Write-WarningLine "Detected a signed current-host profile at '$currentHostProfile'. Using CurrentUserAllHosts instead."
+            }
             Write-InfoLine 'Dry run: True'
             Write-Host ''
             Write-Host $snippet
@@ -262,6 +296,9 @@ function Invoke-ToiCommand {
         Write-Section 'Install'
         Write-SuccessLine 'Installed TOI Git into your PowerShell profile.'
         Write-InfoLine "Profile path: $resolvedProfilePath"
+        if ($fellBackFromSignedProfile) {
+            Write-WarningLine "Detected a signed current-host profile at '$currentHostProfile'. Installed TOI into CurrentUserAllHosts instead."
+        }
         Write-InfoLine 'Open a new shell or run: . $PROFILE'
         Write-InfoLine 'Then you can use: toi status'
     }

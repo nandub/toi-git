@@ -175,6 +175,7 @@ function Invoke-ToiCommand {
         @{ Name = 'Install';   Args = @('install', 'profile', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Install Status'; Args = @('install', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 },
+        @{ Name = 'Release Notes Current State'; Args = @('release', 'notes', 'current-state'); TimeoutSeconds = 20 },
         @{ Name = 'PR Ready'; Args = @('pr', 'ready', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'PR Merge'; Args = @('pr', 'merge', '-DryRun'); TimeoutSeconds = 15 }
     )
@@ -182,6 +183,17 @@ function Invoke-ToiCommand {
     foreach ($commandCheck in $commandChecks) {
         $result = Invoke-CommandCheck -Name $commandCheck.Name -CommandArgs $commandCheck.Args -TimeoutSeconds $commandCheck.TimeoutSeconds
         Add-CheckResult -Name $commandCheck.Name -Success $result.Success -Detail $result.Detail
+    }
+
+    $invalidReleaseSnapshotResult = Invoke-CommandCheck -Name 'Release Tag Current State' -CommandArgs @('release', 'tag', 'current-state') -TimeoutSeconds 15
+    if ($invalidReleaseSnapshotResult.Success) {
+        Add-CheckResult -Name 'Release Tag Current State' -Success $false -Detail 'release tag current-state unexpectedly succeeded.'
+    }
+    elseif ($invalidReleaseSnapshotResult.Detail -notmatch [regex]::Escape("'current-state' is only supported for 'release notes'.")) {
+        Add-CheckResult -Name 'Release Tag Current State' -Success $false -Detail "Unexpected failure message: $($invalidReleaseSnapshotResult.Detail)"
+    }
+    else {
+        Add-CheckResult -Name 'Release Tag Current State' -Success $true -Detail 'release tag current-state was rejected with the expected message.'
     }
 
     $reportResult = Invoke-CommandCheck -Name 'Report Output' -CommandArgs @('report') -TimeoutSeconds 20

@@ -1,8 +1,37 @@
 # TOI Git
 
-TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visible, adds typed branch workflows, and gives you practical guidance for daily branch, review, release, and automation work.
+TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visible, adds typed branch workflows, and gives you practical guidance for daily branch, review, release, automation, and local install work.
 
-The examples below use `.\toi.ps1 ...`, which works in PowerShell when this repo is on your `PATH` or when you run it from the repo root. The repo-local [toi.cmd](C:\Users\ferna\development\code\powershell\Codex\Toi\toi.cmd) launcher is kept for bare `toi ...` usage and for `cmd.exe`.
+The examples below use `.\toi.ps1 ...`, which works from the repo root in PowerShell. If you want bare commands like `toi status`, use the built-in install flow described below. The repo-local [toi.cmd](C:\Users\ferna\development\code\powershell\Codex\Toi\toi.cmd) launcher is still available for `cmd.exe` and compatibility.
+
+## Install
+
+Recommended for PowerShell:
+
+```powershell
+.\toi.ps1 install profile
+```
+
+That adds a small `toi` function to your PowerShell profile so you can run:
+
+```powershell
+toi status
+toi dashboard
+toi publish
+```
+
+If you prefer wrapper scripts in a directory on `PATH`:
+
+```powershell
+.\toi.ps1 install user-bin
+```
+
+Useful install options:
+
+- `install profile -DryRun`: preview the profile snippet without changing your profile
+- `install profile -ProfilePath <path>`: write to a specific profile file
+- `install user-bin -DryRun`: preview the wrapper install
+- `install user-bin -TargetDir <path>`: install wrappers to a specific directory
 
 ## Start Here
 

@@ -26,7 +26,6 @@ function Invoke-ToiCommand {
     Write-InfoLine "Branch: $branchName"
     Write-InfoLine "Base: $baseRef"
 
-    Invoke-Git -GitArguments @('fetch', '--all', '--prune') -AllowFailure | Out-Null
     $result = Invoke-Git -GitArguments @('checkout', '-b', $branchName, $baseRef)
     $result.Output | ForEach-Object { Write-Host $_ }
 }

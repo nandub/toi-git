@@ -51,11 +51,19 @@ function Invoke-ToiCommand {
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $startInfo
         [void]$process.Start()
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
         $completed = $process.WaitForExit($TimeoutSeconds * 1000)
 
         if (-not $completed) {
             try {
                 $process.Kill()
+            }
+            catch {
+            }
+
+            try {
+                $process.WaitForExit()
             }
             catch {
             }
@@ -68,8 +76,8 @@ function Invoke-ToiCommand {
             }
         }
 
-        $stdout = $process.StandardOutput.ReadToEnd()
-        $stderr = $process.StandardError.ReadToEnd()
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
         $process.WaitForExit()
 
         if ($process.ExitCode -eq 0) {
@@ -131,7 +139,8 @@ function Invoke-ToiCommand {
     $jsonChecks = @(
         @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published') },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions') },
-        @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship') }
+        @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship') },
+        @{ Name = 'Schema JSON'; Args = @('schema', '-Json'); TimeoutSeconds = 20; Required = @('contract_version', 'commands') }
     )
 
     foreach ($jsonCheck in $jsonChecks) {

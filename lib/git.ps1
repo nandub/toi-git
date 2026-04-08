@@ -1347,3 +1347,182 @@ function Convert-ToiReportToMarkdown {
 
     return ($lines -join [Environment]::NewLine)
 }
+
+function Get-ToiContractVersion {
+    return '1.0.0'
+}
+
+function New-ToiSchemaField {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Type,
+
+        [string]$Description,
+
+        [object]$Items
+    )
+
+    $field = [ordered]@{
+        type = $Type
+    }
+
+    if ($Description) {
+        $field.description = $Description
+    }
+
+    if ($null -ne $Items) {
+        $field.items = $Items
+    }
+
+    return [PSCustomObject]$field
+}
+
+function Get-ToiJsonCommandSchemas {
+    $stringArray = New-ToiSchemaField -Type 'array' -Description 'Array of strings.' -Items ([PSCustomObject]@{ type = 'string' })
+    $qualityGateArray = New-ToiSchemaField -Type 'array' -Description 'Array of quality gate results.' -Items ([PSCustomObject]@{
+        type = 'object'
+        properties = [PSCustomObject]@{
+            command = 'string'
+            success = 'boolean'
+            exit_code = 'number'
+        }
+    })
+
+    return [PSCustomObject]@{
+        status = [PSCustomObject]@{
+            required = @('branch', 'published', 'upstream', 'branch_line', 'staged', 'unstaged', 'untracked')
+            properties = [PSCustomObject]@{
+                branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
+                published = New-ToiSchemaField -Type 'boolean' -Description 'Whether the current branch exists on a remote.'
+                upstream = New-ToiSchemaField -Type 'string|null' -Description 'Configured upstream ref, if present.'
+                branch_line = New-ToiSchemaField -Type 'string' -Description 'Raw `git status --short --branch` headline.'
+                staged = $stringArray
+                unstaged = $stringArray
+                untracked = $stringArray
+            }
+        }
+        dashboard = [PSCustomObject]@{
+            required = @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'next_actions')
+            properties = [PSCustomObject]@{
+                branch = New-ToiSchemaField -Type 'object' -Description 'Branch-level workflow metadata.'
+                working_tree = New-ToiSchemaField -Type 'object' -Description 'Working tree counts.'
+                publish = New-ToiSchemaField -Type 'object' -Description 'Publish/upstream status.'
+                stack = New-ToiSchemaField -Type 'object' -Description 'Stack-parent and default-branch comparison state.'
+                quality_gates = New-ToiSchemaField -Type 'object' -Description 'Configured validation mode and latest results.'
+                policy = New-ToiSchemaField -Type 'object' -Description 'Active workflow policy flags.'
+                next_actions = $stringArray
+            }
+        }
+        next = [PSCustomObject]@{
+            required = @('branch', 'message', 'published')
+            properties = [PSCustomObject]@{
+                branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
+                message = New-ToiSchemaField -Type 'string' -Description 'Single recommended next action.'
+                published = New-ToiSchemaField -Type 'boolean' -Description 'Whether the branch is published.'
+            }
+        }
+        doctor = [PSCustomObject]@{
+            required = @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'recommendations')
+            properties = [PSCustomObject]@{
+                branch = New-ToiSchemaField -Type 'object' -Description 'Branch-level workflow metadata.'
+                working_tree = New-ToiSchemaField -Type 'object' -Description 'Working tree counts.'
+                publish = New-ToiSchemaField -Type 'object' -Description 'Publish/upstream status.'
+                stack = New-ToiSchemaField -Type 'object' -Description 'Stack-parent and default-branch comparison state.'
+                quality_gates = New-ToiSchemaField -Type 'object' -Description 'Configured validation mode and latest results.'
+                policy = New-ToiSchemaField -Type 'object' -Description 'Active workflow policy flags.'
+                recommendations = $stringArray
+            }
+        }
+        ship = [PSCustomObject]@{
+            required = @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'ship')
+            properties = [PSCustomObject]@{
+                branch = New-ToiSchemaField -Type 'object' -Description 'Branch-level workflow metadata.'
+                working_tree = New-ToiSchemaField -Type 'object' -Description 'Working tree counts.'
+                publish = New-ToiSchemaField -Type 'object' -Description 'Publish/upstream status.'
+                stack = New-ToiSchemaField -Type 'object' -Description 'Stack-parent and default-branch comparison state.'
+                quality_gates = New-ToiSchemaField -Type 'object' -Description 'Configured validation mode and latest results.'
+                policy = New-ToiSchemaField -Type 'object' -Description 'Active workflow policy flags.'
+                ship = New-ToiSchemaField -Type 'object' -Description 'Shipping assessment and commit range.'
+            }
+        }
+        publish = [PSCustomObject]@{
+            required = @('branch', 'dry_run', 'quality_gate_mode', 'upstream', 'branch_url', 'pr_url', 'push_output', 'quality_gates')
+            properties = [PSCustomObject]@{
+                branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
+                dry_run = New-ToiSchemaField -Type 'boolean' -Description 'Whether publish ran in dry-run mode.'
+                quality_gate_mode = New-ToiSchemaField -Type 'string' -Description 'Configured quality gate mode.'
+                upstream = New-ToiSchemaField -Type 'string|null' -Description 'Configured upstream ref before push.'
+                branch_url = New-ToiSchemaField -Type 'string' -Description 'GitHub branch URL.'
+                pr_url = New-ToiSchemaField -Type 'string' -Description 'GitHub compare/PR URL.'
+                push_output = $stringArray
+                quality_gates = $qualityGateArray
+            }
+            blocked_shape = [PSCustomObject]@{
+                required = @('blocked', 'reason', 'branch')
+                properties = [PSCustomObject]@{
+                    blocked = New-ToiSchemaField -Type 'boolean' -Description 'Whether publish was blocked before push.'
+                    reason = New-ToiSchemaField -Type 'string' -Description 'Human-readable block reason.'
+                    branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
+                }
+            }
+        }
+        self_check = [PSCustomObject]@{
+            required = @('checks', 'summary')
+            properties = [PSCustomObject]@{
+                checks = New-ToiSchemaField -Type 'array' -Description 'Per-check results.' -Items ([PSCustomObject]@{
+                    type = 'object'
+                    properties = [PSCustomObject]@{
+                        name = 'string'
+                        success = 'boolean'
+                        detail = 'string'
+                    }
+                })
+                summary = New-ToiSchemaField -Type 'object' -Description 'Aggregate pass/fail counts.'
+            }
+        }
+        report = [PSCustomObject]@{
+            required = @('generated_at', 'snapshot', 'next_actions', 'doctor', 'ship')
+            properties = [PSCustomObject]@{
+                generated_at = New-ToiSchemaField -Type 'string' -Description 'Local timestamp when the report was generated.'
+                snapshot = New-ToiSchemaField -Type 'object' -Description 'Workflow snapshot model.'
+                next_actions = $stringArray
+                doctor = New-ToiSchemaField -Type 'object' -Description 'Doctor recommendations.'
+                ship = New-ToiSchemaField -Type 'object' -Description 'Shipping assessment.'
+            }
+        }
+    }
+}
+
+function Get-ToiSchemaModel {
+    return [PSCustomObject]@{
+        contract_version = Get-ToiContractVersion
+        generated_at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+        commands = Get-ToiJsonCommandSchemas
+    }
+}
+
+function Convert-ToiSchemaToMarkdown {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Schema
+    )
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('# TOI JSON Contracts')
+    $lines.Add('')
+    $lines.Add("Contract version: $($Schema.contract_version)")
+    $lines.Add("Generated: $($Schema.generated_at)")
+    $lines.Add('')
+
+    foreach ($command in $Schema.commands.PSObject.Properties) {
+        $lines.Add("## $($command.Name)")
+        $lines.Add('')
+        $lines.Add('Required fields:')
+        foreach ($field in $command.Value.required) {
+            $lines.Add("- $field")
+        }
+        $lines.Add('')
+    }
+
+    return ($lines -join [Environment]::NewLine)
+}

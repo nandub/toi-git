@@ -22,6 +22,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - `note`: set or show a local note for the current branch
 - `self-check`: run lightweight local verification for TOI Git
 - `report`: generate a workflow report in markdown or json
+- `schema`: export the JSON contract surface in markdown or json
 - `stack`: create or restack dependent branches
 - `release`: start releases, scaffold notes, and create tags
 - `hotfix`: create hotfix branches from the default branch
@@ -39,6 +40,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - CI: GitHub Actions runs the built-in self-check on pushes to `main` and on pull requests
 - CI: GitHub Actions publishes a job summary and uploads the self-check JSON artifact
 - CI: GitHub Actions also uploads workflow report artifacts in both markdown and JSON
+- CI: GitHub Actions uploads the JSON contract artifact from `schema -Json`
 - Team structure: typed branch names, protected branch awareness, default branch policy
 - Advanced flow: stack branches, release branches, release notes/tags, hotfix branches, worktrees
 
@@ -161,3 +163,4 @@ For automation and scripting, these commands support `-Json`:
 - `release ... -Json`
 - `self-check -Json`
 - `report -Json`
+- `schema -Json`

@@ -30,6 +30,10 @@ jobs:
         shell: pwsh
         run: ./toi.ps1 report -Json | Out-File -FilePath toi-report.json -Encoding utf8
 
+      - name: Capture TOI schema JSON
+        shell: pwsh
+        run: ./toi.ps1 schema -Json | Out-File -FilePath toi-schema.json -Encoding utf8
+
       - name: Publish job summary
         shell: pwsh
         run: |
@@ -48,3 +52,9 @@ jobs:
           path: |
             toi-report.md
             toi-report.json
+
+      - name: Upload TOI schema artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: toi-schema
+          path: toi-schema.json

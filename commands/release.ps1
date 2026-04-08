@@ -13,13 +13,21 @@ function Invoke-ToiCommand {
     }
 
     if ($filteredArguments.Count -lt 2) {
-        throw 'Usage: .\\toi.ps1 release <start|notes|tag|publish> <version>'
+        throw 'Usage: .\\toi.ps1 release <start|tag|publish> <version> | .\\toi.ps1 release notes <version|current-state>'
     }
 
     $action = $filteredArguments[0].ToLowerInvariant()
     $version = $filteredArguments[1]
+    $notesSnapshot = Test-ReleaseNotesSnapshotName -Name $version
 
-    if (-not (Test-ValidReleaseVersion -Version $version)) {
+    if ($notesSnapshot -and $action -ne 'notes') {
+        throw "'current-state' is only supported for 'release notes'."
+    }
+
+    if ($action -eq 'notes' -and $notesSnapshot) {
+        $version = 'current-state'
+    }
+    elseif (-not (Test-ValidReleaseVersion -Version $version)) {
         throw "Version '$version' does not match the configured releaseVersionPattern."
     }
 
@@ -66,6 +74,7 @@ function Invoke-ToiCommand {
                 Write-Json ([PSCustomObject]@{
                     action = 'notes'
                     version = $version
+                    current_state = $notesSnapshot
                     file = $notesFile
                     since = $latestTag
                 })
@@ -73,7 +82,12 @@ function Invoke-ToiCommand {
             }
 
             Write-Section 'Release Notes'
-            Write-InfoLine "Version: $version"
+            if ($notesSnapshot) {
+                Write-InfoLine 'Mode: current-state'
+            }
+            else {
+                Write-InfoLine "Version: $version"
+            }
             Write-InfoLine "File: $notesFile"
             if ($latestTag) {
                 Write-InfoLine "Since: $latestTag"
@@ -152,7 +166,7 @@ function Invoke-ToiCommand {
             $publishResult.Output | ForEach-Object { Write-Host $_ }
         }
         default {
-            throw 'Usage: .\\toi.ps1 release <start|notes|tag|publish> <version>'
+            throw 'Usage: .\\toi.ps1 release <start|tag|publish> <version> | .\\toi.ps1 release notes <version|current-state>'
         }
     }
 }

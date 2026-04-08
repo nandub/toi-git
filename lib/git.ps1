@@ -1405,6 +1405,15 @@ function Test-ValidReleaseVersion {
     return $Version -match $pattern
 }
 
+function Test-ReleaseNotesSnapshotName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    return $Name.ToLowerInvariant() -in @('current-state', 'current', 'unreleased')
+}
+
 function Get-ReleaseTagName {
     param(
         [Parameter(Mandatory = $true)]
@@ -1472,24 +1481,53 @@ function Get-ReleaseCommitLines {
 
 function New-ReleaseNotesContent {
     param(
-        [Parameter(Mandatory = $true)]
         [string]$Version,
 
         [string]$SinceRef
     )
 
-    $tagName = Get-ReleaseTagName -Version $Version
+    $isSnapshot = $false
+    if ($Version) {
+        $isSnapshot = Test-ReleaseNotesSnapshotName -Name $Version
+    }
+
     $commits = Get-ReleaseCommitLines -SinceRef $SinceRef
     $lines = New-Object System.Collections.Generic.List[string]
+    $currentBranch = Get-CurrentBranchName
+    if (-not $currentBranch) {
+        $currentBranch = 'HEAD'
+    }
 
-    $lines.Add("# Release $Version")
+    if ($isSnapshot) {
+        $lines.Add('# Current State')
+    }
+    else {
+        $tagName = Get-ReleaseTagName -Version $Version
+        $lines.Add("# Release $Version")
+    }
+
     $lines.Add('')
-    $lines.Add('Tag: `' + $tagName + '`')
+    if ($isSnapshot) {
+        $lines.Add('Release tag: none')
+    }
+    else {
+        $lines.Add('Tag: `' + $tagName + '`')
+    }
     $lines.Add('Generated: ' + (Get-Date -Format 'yyyy-MM-dd'))
+    if ($isSnapshot) {
+        $lines.Add('Branch: `' + $currentBranch + '`')
+    }
     $lines.Add('')
     $lines.Add('## Summary')
     $lines.Add('')
-    $lines.Add('- Fill in the high-level changes for this release.')
+    if ($isSnapshot) {
+        $lines.Add('- Built `TOI Git` into a PowerShell workflow assistant for local Git, GitHub PR and review flows, release helpers, install and module packaging, contract-aware automation, and CI reporting.')
+        $lines.Add('- Added JSON output, schema snapshots, self-check coverage, and GitHub Actions artifact capture so the CLI works for both interactive use and automation.')
+        $lines.Add('- Added maintainer-focused docs and local CI reproduction helpers to make the project easier to operate and evolve.')
+    }
+    else {
+        $lines.Add('- Fill in the high-level changes for this release.')
+    }
     $lines.Add('')
     $lines.Add('## Commits')
     $lines.Add('')

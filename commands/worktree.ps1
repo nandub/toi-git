@@ -13,7 +13,7 @@ function Invoke-ToiCommand {
         }
         'add' {
             if ($Arguments.Count -lt 2) {
-                throw 'Usage: .\toi.ps1 worktree add <path> [branch]'
+                throw 'Usage: toi worktree add <path> [branch]'
             }
 
             $path = $Arguments[1]
@@ -32,7 +32,8 @@ function Invoke-ToiCommand {
             $result.Output | ForEach-Object { Write-Host $_ }
         }
         default {
-            throw 'Usage: .\toi.ps1 worktree <list|add> [args]'
+            throw 'Usage: toi worktree <list|add> [args]'
         }
     }
 }
+

@@ -19,7 +19,7 @@ function Invoke-ToiCommand {
         }
         'set' {
             if ($Arguments.Count -lt 2) {
-                throw 'Usage: .\toi.ps1 note set <text>'
+                throw 'Usage: toi note set <text>'
             }
 
             $note = (($Arguments | Select-Object -Skip 1) -join ' ').Trim()
@@ -38,7 +38,8 @@ function Invoke-ToiCommand {
             Write-InfoLine "Cleared note for $branch"
         }
         default {
-            throw 'Usage: .\toi.ps1 note <show|set|clear> [text]'
+            throw 'Usage: toi note <show|set|clear> [text]'
         }
     }
 }
+

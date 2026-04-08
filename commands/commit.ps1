@@ -4,7 +4,7 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     if (-not $Arguments -or $Arguments.Count -eq 0) {
-        throw 'Provide a commit message. Example: .\toi.ps1 commit "Add summary command"'
+        throw 'Provide a commit message. Example: toi commit "Add summary command"'
     }
 
     $message = ($Arguments -join ' ').Trim()
@@ -33,3 +33,4 @@ function Invoke-ToiCommand {
     $result = Invoke-Git -GitArguments @('commit', '-m', $message)
     $result.Output | ForEach-Object { Write-Host $_ }
 }
+

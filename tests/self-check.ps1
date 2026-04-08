@@ -9,8 +9,9 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
 if ($Json) {
-    powershell -ExecutionPolicy Bypass -File .\toi.ps1 self-check -Json
+    & .\toi.cmd self-check -Json
 }
 else {
-    powershell -ExecutionPolicy Bypass -File .\toi.ps1 self-check
+    & .\toi.cmd self-check
 }
+

@@ -1,17 +1,17 @@
-# Current State
+# Release 1.0.0
 
-Release tag: none
+Tag: `v1.0.0`
 Generated: 2026-04-08
-Branch: `main`
 
 ## Summary
 
-- Built `TOI Git` into a PowerShell workflow assistant for local Git, GitHub PR and review flows, release helpers, install and module packaging, contract-aware automation, and CI reporting.
-- Added JSON output, schema snapshots, self-check coverage, and GitHub Actions artifact capture so the CLI works for both interactive use and automation.
-- Added maintainer-focused docs and local CI reproduction helpers to make the project easier to operate and evolve.
+- Built `TOI Git` into a PowerShell workflow assistant for modern Git with typed branch workflows, local diagnostics, publish guidance, and release helpers.
+- Added GitHub-aware PR and review flows, including `pr status`, `pr checks`, `pr gate`, `review`, and interactive publish and merge paths that work with SSH-authenticated GitHub setups.
+- Added automation and maintenance support through JSON outputs, schema/version snapshots, self-check coverage, CI artifact capture, install and module packaging, and maintainer documentation.
 
 ## Commits
 
+- a6c4902 docs(workflow): sync pr guidance and changelog
 - 12e29fc ux(pr): report missing pull requests as normal state
 - 478925b fix(pr): clarify missing pull request in checks
 - 56cb193 fix(pr): improve no-pr and no-check handling on main

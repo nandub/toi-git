@@ -35,6 +35,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - Local memory: `note` stores branch intent in the local `.git` directory
 - Self-verification: `self-check` exercises core read-only commands and config parsing
 - Automation: `status`, `dashboard`, `next`, and `self-check` support `-Json`
+- CI: GitHub Actions runs the built-in self-check on pushes to `main` and on pull requests
 - Team structure: typed branch names, protected branch awareness, default branch policy
 - Advanced flow: stack branches, release branches, release notes/tags, hotfix branches, worktrees
 

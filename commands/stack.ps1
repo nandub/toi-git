@@ -36,24 +36,28 @@ function Invoke-ToiCommand {
 
             $result = Invoke-Git -GitArguments @('checkout', '-b', $branchName, $baseRef)
             $result.Output | ForEach-Object { Write-Host $_ }
+            Set-ToiStackParent -BranchName $branchName -ParentBranch $baseRef
         }
         'restack' {
             $defaultBranch = Get-DefaultBranchName
             $currentBranch = Get-CurrentBranchName
+            $parentBranch = Get-ToiStackParent -BranchName $currentBranch
+            $rebaseTarget = if ($parentBranch) { $parentBranch } else { $defaultBranch }
 
             Write-Section 'Stack Restack'
             Write-InfoLine "Branch: $currentBranch"
-            Write-InfoLine "Onto: $defaultBranch"
+            Write-InfoLine "Onto: $rebaseTarget"
 
             if (-not (Test-WorkingTreeClean)) {
                 throw 'Working tree must be clean before restacking.'
             }
 
-            $result = Invoke-Git -GitArguments @('rebase', $defaultBranch)
+            $result = Invoke-Git -GitArguments @('rebase', $rebaseTarget)
             $result.Output | ForEach-Object { Write-Host $_ }
         }
         'list' {
             $defaultBranch = Get-DefaultBranchName
+            $stackBranches = Get-ToiStackBranches
             $result = Invoke-Git -GitArguments @('for-each-ref', '--format=%(refname:short)', 'refs/heads')
             $branches = @($result.Output | Where-Object { $_ -and $_ -ne $defaultBranch })
 
@@ -63,10 +67,30 @@ function Invoke-ToiCommand {
                 return
             }
 
-            $branches | ForEach-Object { Write-Host $_ }
+            foreach ($branch in $branches) {
+                $stackEntry = $stackBranches | Where-Object { $_.Branch -eq $branch } | Select-Object -First 1
+                if ($stackEntry) {
+                    Write-Host "$branch <- $($stackEntry.Parent)"
+                }
+                else {
+                    Write-Host $branch
+                }
+            }
+        }
+        'parent' {
+            $currentBranch = Get-CurrentBranchName
+            $parentBranch = Get-ToiStackParent -BranchName $currentBranch
+
+            Write-Section 'Stack Parent'
+            if ($parentBranch) {
+                Write-InfoLine "$currentBranch <- $parentBranch"
+            }
+            else {
+                Write-InfoLine 'No explicit stack parent recorded for the current branch.'
+            }
         }
         default {
-            throw 'Usage: .\toi.ps1 stack <new|restack|list> [args]'
+            throw 'Usage: .\toi.ps1 stack <new|restack|list|parent> [args]'
         }
     }
 }

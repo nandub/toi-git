@@ -17,6 +17,8 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - `doctor`: inspect repo state and suggest next actions
 - `ship`: assess whether a branch is ready for push or PR
 - `publish`: push the current branch and print/open the PR path
+- `dashboard`: show a consolidated workflow overview
+- `next`: show the most likely next action
 - `stack`: create or restack dependent branches
 - `release`: create release branches from the default branch
 - `hotfix`: create hotfix branches from the default branch
@@ -26,6 +28,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - Everyday flow: `start`, `sync`, `save`, `ship`, `undo`
 - PR flow: `publish`, `open pr`, remote-aware `doctor`
 - Policy flow: configured quality gates can warn or block `ship` and `publish`
+- Daily view: `dashboard` and `next`
 - Team structure: typed branch names, protected branch awareness, default branch policy
 - Advanced flow: stack branches, release branches, hotfix branches, worktrees
 
@@ -43,6 +46,7 @@ TOI Git reads `toi.json` from the repository root.
   "qualityGateMode": "warn",
   "validationCommands": [],
   "requirePublishedForPr": true,
+  "dashboardSections": ["branch", "publish", "stack", "gates", "next"],
   "releaseBranches": true,
   "stackedBranches": true
 }
@@ -53,6 +57,7 @@ Policy fields:
 - `qualityGateMode`: `warn` or `block`
 - `validationCommands`: PowerShell commands to run before `ship` and `publish`
 - `requirePublishedForPr`: if `true`, `open pr` requires the branch to be pushed first
+- `dashboardSections`: controls which sections appear in `dashboard`
 
 Example with a local validation command:
 
@@ -82,6 +87,8 @@ Example with a local validation command:
 .\toi.ps1 publish
 .\toi.ps1 publish -DryRun
 .\toi.ps1 publish -Pr
+.\\toi.ps1 dashboard
+.\\toi.ps1 next
 .\toi.ps1 summary
 .\toi.ps1 sync
 .\toi.ps1 commit "Add branch cleanup helper"
@@ -98,8 +105,11 @@ Example with a local validation command:
 .\toi.ps1 worktree add ..\Toi-feature feature/demo
 .\toi.ps1 stack new api-client
 .\toi.ps1 stack restack
+.\\toi.ps1 stack parent
 .\toi.ps1 release start 1.4.0
 .\toi.ps1 hotfix start payment-timeout
 ```
 
 Run the command from inside a Git repository.
+
+TOI Git also stores explicit stack parent metadata in [.toi-stack.json](C:\Users\ferna\development\code\powershell\Codex\Toi\.toi-stack.json) so stacked branches can be restacked against their recorded parent instead of always rebasing onto `main`.

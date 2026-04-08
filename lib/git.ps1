@@ -175,6 +175,7 @@ function Get-ToiConfig {
         qualityGateMode  = 'warn'
         validationCommands = @()
         requirePublishedForPr = $true
+        dashboardSections = @('branch', 'publish', 'stack', 'gates', 'next')
         releaseBranches  = $true
         stackedBranches  = $true
     }
@@ -199,6 +200,7 @@ function Get-ToiConfig {
         qualityGateMode  = if ($parsed.qualityGateMode) { [string]$parsed.qualityGateMode } else { $defaultConfig.qualityGateMode }
         validationCommands = if ($parsed.validationCommands) { @($parsed.validationCommands) } else { $defaultConfig.validationCommands }
         requirePublishedForPr = if ($null -ne $parsed.requirePublishedForPr) { [bool]$parsed.requirePublishedForPr } else { $defaultConfig.requirePublishedForPr }
+        dashboardSections = if ($parsed.dashboardSections) { @($parsed.dashboardSections) } else { $defaultConfig.dashboardSections }
         releaseBranches  = if ($null -ne $parsed.releaseBranches) { [bool]$parsed.releaseBranches } else { $defaultConfig.releaseBranches }
         stackedBranches  = if ($null -ne $parsed.stackedBranches) { [bool]$parsed.stackedBranches } else { $defaultConfig.stackedBranches }
     }
@@ -250,6 +252,11 @@ function Get-ValidationCommands {
 function Test-RequirePublishedForPr {
     $config = Get-ToiConfig
     return [bool]$config.requirePublishedForPr
+}
+
+function Get-DashboardSections {
+    $config = Get-ToiConfig
+    return @($config.dashboardSections)
 }
 
 function ConvertTo-BranchSlug {
@@ -567,4 +574,128 @@ function Invoke-ToiValidationSuite {
         Failed    = @($results | Where-Object { -not $_.Success })
         Passed    = @($results | Where-Object { $_.Success })
     }
+}
+
+function Get-ToiStackMetadataPath {
+    $repoRoot = Get-RepositoryRoot
+    return (Join-Path $repoRoot '.toi-stack.json')
+}
+
+function Get-ToiStackMetadata {
+    $path = Get-ToiStackMetadataPath
+
+    if (-not (Test-Path -LiteralPath $path)) {
+        return [PSCustomObject]@{
+            branches = [PSCustomObject]@{}
+        }
+    }
+
+    $raw = Get-Content -LiteralPath $path -Raw
+    if (-not $raw.Trim()) {
+        return [PSCustomObject]@{
+            branches = [PSCustomObject]@{}
+        }
+    }
+
+    $parsed = $raw | ConvertFrom-Json
+    if (-not $parsed.branches) {
+        $parsed | Add-Member -NotePropertyName branches -NotePropertyValue ([PSCustomObject]@{}) -Force
+    }
+
+    return $parsed
+}
+
+function Save-ToiStackMetadata {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Metadata
+    )
+
+    $path = Get-ToiStackMetadataPath
+    $json = $Metadata | ConvertTo-Json -Depth 10
+    Set-Content -LiteralPath $path -Value $json
+}
+
+function Set-ToiStackParent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ParentBranch
+    )
+
+    $metadata = Get-ToiStackMetadata
+    $branchesMap = [ordered]@{}
+
+    if ($metadata.branches) {
+        foreach ($property in $metadata.branches.PSObject.Properties) {
+            $branchesMap[$property.Name] = $property.Value
+        }
+    }
+
+    $branchesMap[$BranchName] = [PSCustomObject]@{
+        parent = $ParentBranch
+    }
+
+    $metadata.branches = [PSCustomObject]$branchesMap
+    Save-ToiStackMetadata -Metadata $metadata
+}
+
+function Remove-ToiStackBranch {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName
+    )
+
+    $metadata = Get-ToiStackMetadata
+    $branchesMap = [ordered]@{}
+
+    if ($metadata.branches) {
+        foreach ($property in $metadata.branches.PSObject.Properties) {
+            if ($property.Name -ne $BranchName) {
+                $branchesMap[$property.Name] = $property.Value
+            }
+        }
+    }
+
+    $metadata.branches = [PSCustomObject]$branchesMap
+    Save-ToiStackMetadata -Metadata $metadata
+}
+
+function Get-ToiStackParent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName
+    )
+
+    $metadata = Get-ToiStackMetadata
+    if (-not $metadata.branches) {
+        return $null
+    }
+
+    $entry = $metadata.branches.PSObject.Properties[$BranchName]
+    if (-not $entry) {
+        return $null
+    }
+
+    return [string]$entry.Value.parent
+}
+
+function Get-ToiStackBranches {
+    $metadata = Get-ToiStackMetadata
+    $items = @()
+
+    if (-not $metadata.branches) {
+        return @()
+    }
+
+    foreach ($property in $metadata.branches.PSObject.Properties) {
+        $items += [PSCustomObject]@{
+            Branch = $property.Name
+            Parent = [string]$property.Value.parent
+        }
+    }
+
+    return @($items)
 }

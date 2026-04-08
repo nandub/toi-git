@@ -15,6 +15,13 @@
   "qualityGateMode": "warn",
   "validationCommands": [],
   "requirePublishedForPr": true,
+  "dashboardSections": [
+    "branch",
+    "publish",
+    "stack",
+    "gates",
+    "next"
+  ],
   "releaseBranches": true,
   "stackedBranches": true
 }

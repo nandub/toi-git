@@ -1143,3 +1143,110 @@ function Convert-ToiSnapshotToJsonModel {
         }
     }
 }
+
+function Get-ToiDoctorRecommendations {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Snapshot
+    )
+
+    $recommendations = New-Object System.Collections.Generic.List[string]
+
+    if ($Snapshot.ProtectedBranches -contains $Snapshot.Branch -and ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0)) {
+        $recommendations.Add("Avoid doing feature work directly on '$($Snapshot.Branch)'. Create a branch with `.\toi.ps1 start feature <name>`.")
+    }
+
+    if ($Snapshot.RequireBranchNote -and $Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Note) {
+        $recommendations.Add('Add a branch note with `.\toi.ps1 note set <text>`.')
+    }
+
+    if ($Snapshot.UpstreamTracking) {
+        if ($Snapshot.UpstreamTracking.RightAhead -gt 0) {
+            $recommendations.Add('Run `.\toi.ps1 sync` before pushing or opening a PR.')
+        }
+
+        if ($Snapshot.UpstreamTracking.LeftAhead -gt 0) {
+            $recommendations.Add('Branch has local commits ready to push or review.')
+        }
+    }
+    elseif ($Snapshot.Branch -ne $Snapshot.DefaultBranch) {
+        $recommendations.Add('Run `.\toi.ps1 publish` when this branch is ready for review.')
+    }
+
+    if ($Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.RightAhead -gt 0) {
+        $recommendations.Add('Rebase or sync against the default branch before shipping.')
+    }
+
+    if ($Snapshot.UpstreamRef -and $Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.LeftAhead -gt 0) {
+        $recommendations.Add('Open a PR with `.\toi.ps1 open pr` when the branch is ready.')
+    }
+
+    return @($recommendations | Select-Object -Unique)
+}
+
+function Get-ToiShipAssessment {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Snapshot
+    )
+
+    $blockingIssues = New-Object System.Collections.Generic.List[string]
+    $notes = New-Object System.Collections.Generic.List[string]
+    $qualityGateMode = Get-QualityGateMode
+
+    if ($Snapshot.ProtectedBranches -contains $Snapshot.Branch) {
+        $blockingIssues.Add("Refusing to ship directly from protected branch '$($Snapshot.Branch)'.")
+    }
+
+    if ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0) {
+        $blockingIssues.Add('Working tree is not clean enough for shipping.')
+        $notes.Add('Use `.\toi.ps1 save` or commit/stage intentionally first.')
+    }
+
+    if (-not (Test-MatchesBranchConvention -BranchName $Snapshot.Branch) -and $Snapshot.ProtectedBranches -notcontains $Snapshot.Branch) {
+        $notes.Add('Branch name is outside TOI conventions.')
+    }
+
+    if ($Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.RightAhead -gt 0) {
+        $blockingIssues.Add("Branch is behind $($Snapshot.DefaultBranch) by $($Snapshot.DefaultTracking.RightAhead) commit(s).")
+    }
+
+    if ($Snapshot.UpstreamTracking) {
+        if ($Snapshot.UpstreamTracking.RightAhead -gt 0) {
+            $blockingIssues.Add('Branch is behind its upstream.')
+        }
+
+        if ($Snapshot.UpstreamTracking.LeftAhead -eq 0 -and $Snapshot.UpstreamTracking.RightAhead -eq 0 -and $Snapshot.Branch -ne $Snapshot.DefaultBranch) {
+            $notes.Add('No local commits to push.')
+        }
+
+        if ($Snapshot.UpstreamTracking.LeftAhead -gt 0 -and $Snapshot.Branch -ne $Snapshot.DefaultBranch) {
+            $notes.Add('Branch has local commits ready to push or review.')
+        }
+    }
+    elseif ($Snapshot.Branch -eq $Snapshot.DefaultBranch) {
+        $notes.Add('Default branch has no upstream configured.')
+    }
+    else {
+        $notes.Add('Branch is local only. Run `.\toi.ps1 publish` to push it and set upstream.')
+    }
+
+    if ($Snapshot.ValidationSuite.HasChecks) {
+        foreach ($result in $Snapshot.ValidationSuite.Results) {
+            if (-not $result.Success) {
+                if ($qualityGateMode -eq 'block') {
+                    $blockingIssues.Add("Quality gate failed: $($result.Command)")
+                }
+                else {
+                    $notes.Add("Quality gate failed in warn mode: $($result.Command)")
+                }
+            }
+        }
+    }
+
+    return [PSCustomObject]@{
+        blocking_issues = @($blockingIssues | Select-Object -Unique)
+        notes = @($notes | Select-Object -Unique)
+        quality_gate_mode = $qualityGateMode
+    }
+}

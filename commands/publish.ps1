@@ -3,6 +3,7 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
+    $json = $Arguments -contains '-Json'
     $branch = Get-CurrentBranchName
     $defaultBranch = Get-DefaultBranchName
     $protectedBranches = Get-ProtectedBranches
@@ -13,14 +14,41 @@ function Invoke-ToiCommand {
     $qualityGateMode = Get-QualityGateMode
 
     if ($protectedBranches -contains $branch) {
+        if ($json) {
+            Write-Json ([PSCustomObject]@{
+                blocked = $true
+                reason = "Refusing to publish directly from protected branch '$branch'."
+                branch = $branch
+            })
+            return
+        }
+
         throw "Refusing to publish directly from protected branch '$branch'."
     }
 
     if (-not (Test-WorkingTreeClean)) {
+        if ($json) {
+            Write-Json ([PSCustomObject]@{
+                blocked = $true
+                reason = 'Working tree must be clean before publishing.'
+                branch = $branch
+            })
+            return
+        }
+
         throw 'Working tree must be clean before publishing.'
     }
 
     if (-not $remoteUrl) {
+        if ($json) {
+            Write-Json ([PSCustomObject]@{
+                blocked = $true
+                reason = 'No origin remote is configured.'
+                branch = $branch
+            })
+            return
+        }
+
         throw 'No origin remote is configured.'
     }
 
@@ -28,7 +56,7 @@ function Invoke-ToiCommand {
     $validationSuite = Invoke-ToiValidationSuite
     $failedChecks = @($validationSuite.Failed)
 
-    if ($validationSuite.HasChecks) {
+    if ($validationSuite.HasChecks -and -not $json) {
         Write-Section 'Quality Gates'
         foreach ($result in $validationSuite.Results) {
             if ($result.Success) {
@@ -47,17 +75,37 @@ function Invoke-ToiCommand {
         }
 
         if ($failedChecks.Count -gt 0 -and $qualityGateMode -eq 'block') {
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    blocked = $true
+                    reason = 'Publish blocked by failing quality gates.'
+                    branch = $branch
+                    quality_gates = @($validationSuite.Results | ForEach-Object {
+                        [PSCustomObject]@{
+                            command = $_.Command
+                            success = $_.Success
+                            exit_code = $_.ExitCode
+                        }
+                    })
+                })
+                return
+            }
+
             throw 'Publish blocked by failing quality gates.'
         }
     }
 
-    Write-Section 'Publish'
-    Write-InfoLine "Branch: $branch"
-    Write-InfoLine "Dry run: $dryRun"
-    Write-InfoLine "Quality gate mode: $qualityGateMode"
+    if (-not $json) {
+        Write-Section 'Publish'
+        Write-InfoLine "Branch: $branch"
+        Write-InfoLine "Dry run: $dryRun"
+        Write-InfoLine "Quality gate mode: $qualityGateMode"
+    }
 
     if ($upstreamRef) {
-        Write-InfoLine "Upstream: $upstreamRef"
+        if (-not $json) {
+            Write-InfoLine "Upstream: $upstreamRef"
+        }
         $gitArguments = if ($dryRun) { @('push', '--dry-run') } else { @('push') }
     }
     else {
@@ -66,11 +114,33 @@ function Invoke-ToiCommand {
 
     $pushResult = Invoke-Git -GitArguments $gitArguments
 
-    $pushResult.Output | ForEach-Object { Write-Host $_ }
+    if (-not $json) {
+        $pushResult.Output | ForEach-Object { Write-Host $_ }
+    }
 
     $repositoryUrl = Convert-RemoteToBrowseUrl -RemoteUrl $remoteUrl
     $branchUrl = Get-BranchBrowseUrl -RepositoryUrl $repositoryUrl -BranchName $branch
     $prUrl = Get-PullRequestBrowseUrl -RepositoryUrl $repositoryUrl -BaseBranch $defaultBranch -HeadBranch $branch
+
+    if ($json) {
+        Write-Json ([PSCustomObject]@{
+            branch = $branch
+            dry_run = $dryRun
+            quality_gate_mode = $qualityGateMode
+            upstream = $upstreamRef
+            branch_url = $branchUrl
+            pr_url = $prUrl
+            push_output = @($pushResult.Output)
+            quality_gates = @($validationSuite.Results | ForEach-Object {
+                [PSCustomObject]@{
+                    command = $_.Command
+                    success = $_.Success
+                    exit_code = $_.ExitCode
+                }
+            })
+        })
+        return
+    }
 
     Write-Section 'Next'
     Write-InfoLine "Branch URL: $branchUrl"

@@ -3,16 +3,19 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
+    $json = $Arguments -contains '-Json'
+    $filteredArguments = @($Arguments | Where-Object { $_ -ne '-Json' })
+
     if (-not (Test-ReleaseBranchesEnabled)) {
         throw 'Release branches are disabled in toi.json.'
     }
 
-    if ($Arguments.Count -lt 2) {
+    if ($filteredArguments.Count -lt 2) {
         throw 'Usage: .\toi.ps1 release <start|notes|tag> <version>'
     }
 
-    $action = $Arguments[0].ToLowerInvariant()
-    $version = $Arguments[1]
+    $action = $filteredArguments[0].ToLowerInvariant()
+    $version = $filteredArguments[1]
 
     if (-not (Test-ValidReleaseVersion -Version $version)) {
         throw "Version '$version' does not match the configured releaseVersionPattern."
@@ -31,6 +34,19 @@ function Invoke-ToiCommand {
                 throw "Branch '$branchName' already exists."
             }
 
+            $result = Invoke-Git -GitArguments @('checkout', '-b', $branchName, $baseRef)
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'start'
+                    version = $version
+                    branch = $branchName
+                    base = $baseRef
+                    previous_tag = $latestTag
+                    output = @($result.Output)
+                })
+                return
+            }
+
             Write-Section 'Release Start'
             Write-InfoLine "Version: $version"
             Write-InfoLine "Branch: $branchName"
@@ -38,13 +54,21 @@ function Invoke-ToiCommand {
             if ($latestTag) {
                 Write-InfoLine "Previous tag: $latestTag"
             }
-
-            $result = Invoke-Git -GitArguments @('checkout', '-b', $branchName, $baseRef)
             $result.Output | ForEach-Object { Write-Host $_ }
         }
         'notes' {
             $content = New-ReleaseNotesContent -Version $version -SinceRef $latestTag
             Set-Content -LiteralPath $notesFile -Value $content
+
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'notes'
+                    version = $version
+                    file = $notesFile
+                    since = $latestTag
+                })
+                return
+            }
 
             Write-Section 'Release Notes'
             Write-InfoLine "Version: $version"
@@ -67,6 +91,17 @@ function Invoke-ToiCommand {
 
             $message = "Release $version"
             $result = Invoke-Git -GitArguments @('tag', '-a', $tagName, '-m', $message)
+
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'tag'
+                    version = $version
+                    tag = $tagName
+                    message = $message
+                    output = @($result.Output)
+                })
+                return
+            }
 
             Write-Section 'Release Tag'
             Write-InfoLine "Tag: $tagName"

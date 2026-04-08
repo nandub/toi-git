@@ -3,93 +3,60 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
-    $branch = Get-CurrentBranchName
-    $defaultBranch = Get-DefaultBranchName
-    $defaultCompareRef = Get-DefaultBranchComparisonRef
-    $upstreamRef = Get-UpstreamRef
-    $isPublished = Test-CurrentBranchPublished
-    $status = Get-StatusSummary
-    $protectedBranches = Get-ProtectedBranches
-    $note = Get-ToiBranchNote -BranchName $branch
-    $commitConvention = Get-CommitConvention
-    $recommendations = New-Object System.Collections.Generic.List[string]
+    $json = $Arguments -contains '-Json'
+    $snapshot = Get-ToiWorkflowSnapshot
+    $recommendations = Get-ToiDoctorRecommendations -Snapshot $snapshot
+
+    if ($json) {
+        $model = Convert-ToiSnapshotToJsonModel -Snapshot $snapshot
+        $model | Add-Member -NotePropertyName recommendations -NotePropertyValue @($recommendations) -Force
+        Write-Json $model
+        return
+    }
 
     Write-Section 'Doctor'
-    Write-Host "Branch: $branch"
-    Write-Host "Default branch: $defaultBranch"
+    Write-Host "Branch: $($snapshot.Branch)"
+    Write-Host "Default branch: $($snapshot.DefaultBranch)"
     Write-Host "Sync strategy: $(Get-SyncStrategy)"
-    Write-Host "Working tree: $($status.ChangedFiles) changed file(s)"
-    Write-Host "Published: $isPublished"
-    Write-Host "Commit convention: $commitConvention"
-    if ($note) {
-        Write-Host "Note: $note"
+    Write-Host "Working tree: $($snapshot.Status.ChangedFiles) changed file(s)"
+    Write-Host "Published: $($snapshot.Published)"
+    Write-Host "Commit convention: $($snapshot.CommitConvention)"
+    if ($snapshot.Note) {
+        Write-Host "Note: $($snapshot.Note)"
     }
 
-    if ($status.Staged -gt 0) {
-        Write-Host "Staged entries: $($status.Staged)"
+    if ($snapshot.Status.Staged -gt 0) {
+        Write-Host "Staged entries: $($snapshot.Status.Staged)"
     }
 
-    if ($status.Unstaged -gt 0) {
-        Write-Host "Unstaged entries: $($status.Unstaged)"
+    if ($snapshot.Status.Unstaged -gt 0) {
+        Write-Host "Unstaged entries: $($snapshot.Status.Unstaged)"
     }
 
-    if ($status.Untracked -gt 0) {
-        Write-Host "Untracked entries: $($status.Untracked)"
+    if ($snapshot.Status.Untracked -gt 0) {
+        Write-Host "Untracked entries: $($snapshot.Status.Untracked)"
     }
 
-    if (Test-MatchesBranchConvention -BranchName $branch) {
+    if (Test-MatchesBranchConvention -BranchName $snapshot.Branch) {
         Write-SuccessLine 'Branch name matches TOI conventions.'
     }
-    elseif ($protectedBranches -notcontains $branch) {
+    elseif ($snapshot.ProtectedBranches -notcontains $snapshot.Branch) {
         Write-WarningLine 'Branch name does not match configured TOI branch types.'
-        $recommendations.Add('Consider creating a typed branch with `.\toi.ps1 start <type> <name>`.')
     }
 
-    if ($protectedBranches -contains $branch -and -not (Test-WorkingTreeClean)) {
-        $recommendations.Add("Avoid doing feature work directly on '$branch'. Create a branch with `.\toi.ps1 start feature <name>`.")
-    }
-
-    if ((Test-BranchNoteRequired) -and $branch -ne $defaultBranch -and -not $note) {
-        $recommendations.Add('Add a branch note with `.\toi.ps1 note set <text>`.`')
-    }
-
-    if ($upstreamRef) {
-        Write-Host "Upstream: $upstreamRef"
-        $tracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $upstreamRef
-        if ($tracking) {
-            Write-Host "Ahead of upstream: $($tracking.LeftAhead)"
-            Write-Host "Behind upstream: $($tracking.RightAhead)"
-
-            if ($tracking.RightAhead -gt 0) {
-                $recommendations.Add('Run `.\toi.ps1 sync` before pushing or opening a PR.')
-            }
-
-            if ($tracking.LeftAhead -gt 0) {
-                $recommendations.Add('Branch has local commits ready to push or review.')
-            }
-
-            if ($tracking.LeftAhead -eq 0 -and $tracking.RightAhead -eq 0 -and $branch -eq $defaultBranch) {
-                $recommendations.Add("Default branch is aligned with $upstreamRef.")
-            }
+    if ($snapshot.UpstreamRef) {
+        Write-Host "Upstream: $($snapshot.UpstreamRef)"
+        if ($snapshot.UpstreamTracking) {
+            Write-Host "Ahead of upstream: $($snapshot.UpstreamTracking.LeftAhead)"
+            Write-Host "Behind upstream: $($snapshot.UpstreamTracking.RightAhead)"
         }
     }
     else {
         Write-WarningLine 'Current branch has no upstream.'
-        if ($branch -ne $defaultBranch) {
-            $recommendations.Add('Run `.\toi.ps1 publish` when this branch is ready for review.')
-        }
     }
 
-    if ($branch -ne $defaultBranch -and $defaultCompareRef) {
-        $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultCompareRef
-        if ($defaultTracking -and $defaultTracking.RightAhead -gt 0) {
-            Write-WarningLine "Branch is behind $defaultBranch by $($defaultTracking.RightAhead) commit(s)."
-            $recommendations.Add('Rebase or sync against the default branch before shipping.')
-        }
-
-        if ($upstreamRef -and $defaultTracking -and $defaultTracking.LeftAhead -gt 0) {
-            $recommendations.Add('Open a PR with `.\toi.ps1 open pr` when the branch is ready.')
-        }
+    if ($snapshot.DefaultTracking -and $snapshot.DefaultTracking.RightAhead -gt 0) {
+        Write-WarningLine "Branch is behind $($snapshot.DefaultBranch) by $($snapshot.DefaultTracking.RightAhead) commit(s)."
     }
 
     Write-Section 'Next Actions'
@@ -99,15 +66,5 @@ function Invoke-ToiCommand {
         return
     }
 
-    $recommendations |
-        Select-Object -Unique |
-        Where-Object { $_ -ne "Default branch is aligned with $upstreamRef." } |
-        ForEach-Object { Write-Host "- $_" }
-
-    if ($branch -eq $defaultBranch -and $upstreamRef) {
-        $tracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $upstreamRef
-        if ($tracking -and $tracking.LeftAhead -eq 0 -and $tracking.RightAhead -eq 0) {
-            Write-InfoLine "Default branch is aligned with $upstreamRef."
-        }
-    }
+    $recommendations | ForEach-Object { Write-Host "- $_" }
 }

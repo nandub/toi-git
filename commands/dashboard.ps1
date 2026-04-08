@@ -3,36 +3,16 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
+    $json = $Arguments -contains '-Json'
     $sections = Get-DashboardSections
     $snapshot = Get-ToiWorkflowSnapshot
-    $nextActions = New-Object System.Collections.Generic.List[string]
+    $nextActions = Get-ToiNextActions -Snapshot $snapshot
 
-    if ($snapshot.Status.Unstaged -gt 0 -or $snapshot.Status.Untracked -gt 0) {
-        $nextActions.Add('Clean up or checkpoint the working tree with `.\toi.ps1 save`.')
-    }
-
-    if ($snapshot.Branch -ne $snapshot.DefaultBranch -and -not $snapshot.Published) {
-        $nextActions.Add('Publish the branch with `.\toi.ps1 publish` when it is ready.')
-    }
-
-    if ($snapshot.Branch -ne $snapshot.DefaultBranch -and $snapshot.Published) {
-        $nextActions.Add('Open the PR path with `.\toi.ps1 open pr`.')
-    }
-
-    if ($snapshot.Branch -eq $snapshot.DefaultBranch -and $snapshot.Status.ChangedFiles -eq 0) {
-        $nextActions.Add('Create a typed branch with `.\toi.ps1 start feature <name>` for the next change.')
-    }
-
-    if ($snapshot.RequireBranchNote -and $snapshot.Branch -ne $snapshot.DefaultBranch -and -not $snapshot.Note) {
-        $nextActions.Add('Add a branch note with `.\toi.ps1 note set <text>`.')
-    }
-
-    if ($snapshot.UpstreamTracking -and $snapshot.UpstreamTracking.RightAhead -gt 0) {
-        $nextActions.Add('Sync the branch with `.\toi.ps1 sync` before pushing or opening a PR.')
-    }
-
-    if ($snapshot.DefaultTracking -and $snapshot.DefaultTracking.RightAhead -gt 0) {
-        $nextActions.Add("Restack or rebase on $($snapshot.DefaultBranch) to pick up newer commits.")
+    if ($json) {
+        $model = Convert-ToiSnapshotToJsonModel -Snapshot $snapshot
+        $model | Add-Member -NotePropertyName next_actions -NotePropertyValue @($nextActions) -Force
+        Write-Json $model
+        return
     }
 
     if ($sections -contains 'branch') {
@@ -101,7 +81,7 @@ function Invoke-ToiCommand {
             Write-InfoLine 'No obvious next step.'
         }
         else {
-            $nextActions | Select-Object -Unique | ForEach-Object { Write-BulletLine $_ }
+            $nextActions | ForEach-Object { Write-BulletLine $_ }
         }
     }
 }

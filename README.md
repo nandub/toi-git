@@ -34,6 +34,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - Terminal UX: `dashboard`, `next`, and `status` now share a compact cockpit-style view
 - Local memory: `note` stores branch intent in the local `.git` directory
 - Self-verification: `self-check` exercises core read-only commands and config parsing
+- Automation: `status`, `dashboard`, `next`, and `self-check` support `-Json`
 - Team structure: typed branch names, protected branch awareness, default branch policy
 - Advanced flow: stack branches, release branches, release notes/tags, hotfix branches, worktrees
 
@@ -108,6 +109,9 @@ Example with a local validation command:
 .\\toi.ps1 note show
 .\\toi.ps1 note set "Prepare branch for login form PR"
 .\\toi.ps1 self-check
+.\\toi.ps1 status -Json
+.\\toi.ps1 dashboard -Json
+.\\toi.ps1 next -Json
 .\toi.ps1 summary
 .\toi.ps1 sync
 .\toi.ps1 commit "Add branch cleanup helper"
@@ -136,3 +140,10 @@ Run the command from inside a Git repository.
 TOI Git also stores explicit stack parent metadata in the local `.git` directory so stacked branches can be restacked against their recorded parent without polluting tracked files.
 
 There is also a lightweight wrapper at [tests/self-check.ps1](C:\Users\ferna\development\code\powershell\Codex\Toi\tests\self-check.ps1) for running the built-in verification flow.
+
+For automation and scripting, these commands support `-Json`:
+
+- `status -Json`
+- `dashboard -Json`
+- `next -Json`
+- `self-check -Json`

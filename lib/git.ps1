@@ -1057,3 +1057,89 @@ function Get-ToiWorkflowSnapshot {
         RequireBranchNote = (Test-BranchNoteRequired)
     }
 }
+
+function Get-ToiNextActions {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Snapshot
+    )
+
+    $nextActions = New-Object System.Collections.Generic.List[string]
+
+    if ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0) {
+        $nextActions.Add('Clean up or checkpoint the working tree with `.\toi.ps1 save`.')
+    }
+
+    if ($Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Published) {
+        $nextActions.Add('Publish the branch with `.\toi.ps1 publish` when it is ready.')
+    }
+
+    if ($Snapshot.Branch -ne $Snapshot.DefaultBranch -and $Snapshot.Published) {
+        $nextActions.Add('Open the PR path with `.\toi.ps1 open pr`.')
+    }
+
+    if ($Snapshot.Branch -eq $Snapshot.DefaultBranch -and $Snapshot.Status.ChangedFiles -eq 0) {
+        $nextActions.Add('Create a typed branch with `.\toi.ps1 start feature <name>` for the next change.')
+    }
+
+    if ($Snapshot.RequireBranchNote -and $Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Note) {
+        $nextActions.Add('Add a branch note with `.\toi.ps1 note set <text>`.')
+    }
+
+    if ($Snapshot.UpstreamTracking -and $Snapshot.UpstreamTracking.RightAhead -gt 0) {
+        $nextActions.Add('Sync the branch with `.\toi.ps1 sync` before pushing or opening a PR.')
+    }
+
+    if ($Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.RightAhead -gt 0) {
+        $nextActions.Add("Restack or rebase on $($Snapshot.DefaultBranch) to pick up newer commits.")
+    }
+
+    return @($nextActions | Select-Object -Unique)
+}
+
+function Convert-ToiSnapshotToJsonModel {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Snapshot
+    )
+
+    return [PSCustomObject]@{
+        branch = [PSCustomObject]@{
+            current = $Snapshot.Branch
+            type = $Snapshot.BranchType
+            default = $Snapshot.DefaultBranch
+            published = $Snapshot.Published
+            note = $Snapshot.Note
+            commit_convention = $Snapshot.CommitConvention
+        }
+        working_tree = [PSCustomObject]@{
+            changed_files = $Snapshot.Status.ChangedFiles
+            staged = $Snapshot.Status.Staged
+            unstaged = $Snapshot.Status.Unstaged
+            untracked = $Snapshot.Status.Untracked
+        }
+        publish = [PSCustomObject]@{
+            upstream = $Snapshot.UpstreamRef
+            ahead = if ($Snapshot.UpstreamTracking) { $Snapshot.UpstreamTracking.LeftAhead } else { $null }
+            behind = if ($Snapshot.UpstreamTracking) { $Snapshot.UpstreamTracking.RightAhead } else { $null }
+        }
+        stack = [PSCustomObject]@{
+            parent = $Snapshot.StackParent
+            behind_default = if ($Snapshot.DefaultTracking) { $Snapshot.DefaultTracking.RightAhead } else { $null }
+        }
+        quality_gates = [PSCustomObject]@{
+            mode = Get-QualityGateMode
+            has_checks = $Snapshot.ValidationSuite.HasChecks
+            results = @($Snapshot.ValidationSuite.Results | ForEach-Object {
+                [PSCustomObject]@{
+                    command = $_.Command
+                    success = $_.Success
+                    exit_code = $_.ExitCode
+                }
+            })
+        }
+        policy = [PSCustomObject]@{
+            require_branch_note = $Snapshot.RequireBranchNote
+        }
+    }
+}

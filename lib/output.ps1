@@ -37,6 +37,15 @@ function Write-BulletLine {
     Write-Host "- $Text"
 }
 
+function Write-Json {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Value
+    )
+
+    $Value | ConvertTo-Json -Depth 10
+}
+
 function Write-InfoLine {
     param([string]$Text)
 

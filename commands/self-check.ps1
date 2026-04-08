@@ -3,6 +3,7 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
+    $json = $Arguments -contains '-Json'
     $root = Get-RepositoryRoot
     $checks = New-Object System.Collections.Generic.List[psobject]
 
@@ -93,25 +94,44 @@ function Invoke-ToiCommand {
         }
     }
 
-    Write-Section 'Self Check'
-
-    foreach ($check in $checks) {
-        if ($check.Success) {
-            Write-StatusBadge -Label 'PASS' -Tone 'good'
-        }
-        else {
-            Write-StatusBadge -Label 'FAIL' -Tone 'bad'
-        }
-
-        Write-Host " $($check.Name)"
-        Write-InfoLine "  $($check.Detail)"
-    }
-
     $failed = @($checks | Where-Object { -not $_.Success })
-    Write-Section 'Summary'
-    Write-KeyValue 'Checks' $checks.Count
-    Write-KeyValue 'Passed' ($checks.Count - $failed.Count)
-    Write-KeyValue 'Failed' $failed.Count
+
+    if ($json) {
+        Write-Json ([PSCustomObject]@{
+            checks = @($checks | ForEach-Object {
+                [PSCustomObject]@{
+                    name = $_.Name
+                    success = $_.Success
+                    detail = $_.Detail
+                }
+            })
+            summary = [PSCustomObject]@{
+                checks = $checks.Count
+                passed = ($checks.Count - $failed.Count)
+                failed = $failed.Count
+            }
+        })
+    }
+    else {
+        Write-Section 'Self Check'
+
+        foreach ($check in $checks) {
+            if ($check.Success) {
+                Write-StatusBadge -Label 'PASS' -Tone 'good'
+            }
+            else {
+                Write-StatusBadge -Label 'FAIL' -Tone 'bad'
+            }
+
+            Write-Host " $($check.Name)"
+            Write-InfoLine "  $($check.Detail)"
+        }
+
+        Write-Section 'Summary'
+        Write-KeyValue 'Checks' $checks.Count
+        Write-KeyValue 'Passed' ($checks.Count - $failed.Count)
+        Write-KeyValue 'Failed' $failed.Count
+    }
 
     if ($failed.Count -gt 0) {
         throw 'Self-check detected one or more failures.'

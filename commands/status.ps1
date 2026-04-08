@@ -3,23 +3,11 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
+    $json = $Arguments -contains '-Json'
     $statusLines = Get-StatusLines
     $branchLine = $statusLines | Select-Object -First 1
     $fileLines = $statusLines | Select-Object -Skip 1
     $snapshot = Get-ToiWorkflowSnapshot
-
-    Write-Section 'Status'
-    Write-KeyValue 'Branch' $snapshot.Branch
-    Write-KeyValue 'Published' $snapshot.Published
-    if ($snapshot.UpstreamRef) {
-        Write-KeyValue 'Upstream' $snapshot.UpstreamRef
-    }
-    Write-InfoLine $branchLine
-
-    if (-not $fileLines -or $fileLines.Count -eq 0) {
-        Write-SuccessLine 'Working tree is clean.'
-        return
-    }
 
     $staged = @()
     $unstaged = @()
@@ -45,6 +33,32 @@ function Invoke-ToiCommand {
         if ($indexState -eq '?' -and $workTreeState -eq '?') {
             $untracked += $path
         }
+    }
+
+    if ($json) {
+        Write-Json ([PSCustomObject]@{
+            branch = $snapshot.Branch
+            published = $snapshot.Published
+            upstream = $snapshot.UpstreamRef
+            branch_line = $branchLine
+            staged = @($staged | Sort-Object -Unique)
+            unstaged = @($unstaged | Sort-Object -Unique)
+            untracked = @($untracked | Sort-Object -Unique)
+        })
+        return
+    }
+
+    Write-Section 'Status'
+    Write-KeyValue 'Branch' $snapshot.Branch
+    Write-KeyValue 'Published' $snapshot.Published
+    if ($snapshot.UpstreamRef) {
+        Write-KeyValue 'Upstream' $snapshot.UpstreamRef
+    }
+    Write-InfoLine $branchLine
+
+    if (-not $fileLines -or $fileLines.Count -eq 0) {
+        Write-SuccessLine 'Working tree is clean.'
+        return
     }
 
     if ($staged.Count -gt 0) {

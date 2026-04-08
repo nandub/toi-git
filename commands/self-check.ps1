@@ -135,6 +135,39 @@ function Invoke-ToiCommand {
         Add-CheckResult -Name 'Contract schema' -Success $false -Detail $_.Exception.Message
     }
 
+    try {
+        $contractVersion = Get-ToiContractVersion
+        if (-not (Test-ToiValidContractVersion -Version $contractVersion)) {
+            throw "Invalid contract version '$contractVersion'. Expected semantic versioning like 1.2.3."
+        }
+
+        Add-CheckResult -Name 'Contract version format' -Success $true -Detail $contractVersion
+    }
+    catch {
+        Add-CheckResult -Name 'Contract version format' -Success $false -Detail $_.Exception.Message
+    }
+
+    try {
+        $snapshotPath = Get-ToiContractSnapshotPath
+        if (-not (Test-Path -LiteralPath $snapshotPath)) {
+            throw 'contracts/toi-schema.json is missing.'
+        }
+
+        $expectedSnapshot = Get-Content -LiteralPath $snapshotPath -Raw | ConvertFrom-Json
+        $currentSnapshot = Get-ToiSchemaSnapshotModel
+        $expectedCanonical = Convert-ToiValueToCanonicalJson -Value $expectedSnapshot
+        $currentCanonical = Convert-ToiValueToCanonicalJson -Value $currentSnapshot
+
+        if ($expectedCanonical -ne $currentCanonical) {
+            throw 'Committed contract snapshot is out of date. Regenerate contracts/toi-schema.json.'
+        }
+
+        Add-CheckResult -Name 'Contract snapshot' -Success $true -Detail 'Committed schema snapshot matches current contract output.'
+    }
+    catch {
+        Add-CheckResult -Name 'Contract snapshot' -Success $false -Detail $_.Exception.Message
+    }
+
     $commandChecks = @(
         @{ Name = 'Help';      Args = @();            TimeoutSeconds = 10 },
         @{ Name = 'Status';    Args = @('status');    TimeoutSeconds = 15 },

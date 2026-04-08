@@ -1349,7 +1349,31 @@ function Convert-ToiReportToMarkdown {
 }
 
 function Get-ToiContractVersion {
-    return '1.0.0'
+    $versionPath = Join-Path (Get-RepositoryRoot) 'contracts\contract-version.txt'
+
+    if (-not (Test-Path -LiteralPath $versionPath)) {
+        return '1.0.0'
+    }
+
+    $version = (Get-Content -LiteralPath $versionPath -Raw).Trim()
+    if (-not $version) {
+        throw 'contracts/contract-version.txt is empty.'
+    }
+
+    return $version
+}
+
+function Test-ToiValidContractVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    return $Version -match '^\d+\.\d+\.\d+$'
+}
+
+function Get-ToiContractSnapshotPath {
+    return (Join-Path (Get-RepositoryRoot) 'contracts\toi-schema.json')
 }
 
 function New-ToiSchemaField {
@@ -1568,6 +1592,13 @@ function Get-ToiSchemaModel {
     }
 }
 
+function Get-ToiSchemaSnapshotModel {
+    return [PSCustomObject]@{
+        contract_version = Get-ToiContractVersion
+        commands = Get-ToiJsonCommandSchemas
+    }
+}
+
 function Convert-ToiSchemaToMarkdown {
     param(
         [Parameter(Mandatory = $true)]
@@ -1672,4 +1703,38 @@ function Get-ToiSchemaValidationErrors {
     }
 
     return @($errors)
+}
+
+function Convert-ToiValueToCanonicalForm {
+    param(
+        [object]$Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [string] -or $Value -is [bool] -or $Value -is [byte] -or $Value -is [int16] -or $Value -is [int32] -or $Value -is [int64] -or $Value -is [single] -or $Value -is [double] -or $Value -is [decimal]) {
+        return $Value
+    }
+
+    if ($Value -is [System.Array]) {
+        return @($Value | ForEach-Object { Convert-ToiValueToCanonicalForm -Value $_ })
+    }
+
+    $ordered = [ordered]@{}
+    foreach ($property in ($Value.PSObject.Properties | Sort-Object Name)) {
+        $ordered[$property.Name] = Convert-ToiValueToCanonicalForm -Value $property.Value
+    }
+
+    return [PSCustomObject]$ordered
+}
+
+function Convert-ToiValueToCanonicalJson {
+    param(
+        [object]$Value
+    )
+
+    $canonical = Convert-ToiValueToCanonicalForm -Value $Value
+    return ($canonical | ConvertTo-Json -Depth 64)
 }

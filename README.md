@@ -142,9 +142,11 @@ Use them this way:
 - `dashboard -Json` for a richer workflow snapshot plus next actions
 - `report -Json` for a CI-friendly workflow summary
 - `schema -Json` for the current JSON contract surface
+- `schema -Json -Snapshot` for the stable committed contract form without timestamps
 - `self-check -Json` for machine-readable local verification results
 
 The built-in `self-check` validates core JSON outputs against the declared contracts from `schema`, so automation drift is caught locally before CI.
+The contract version is tracked in [contracts/contract-version.txt](C:\Users\ferna\development\code\powershell\Codex\Toi\contracts\contract-version.txt), and the committed schema baseline lives in [contracts/toi-schema.json](C:\Users\ferna\development\code\powershell\Codex\Toi\contracts\toi-schema.json).
 
 GitHub Actions currently does this on pushes to `main` and on pull requests:
 

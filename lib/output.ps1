@@ -43,7 +43,7 @@ function Write-Json {
         $Value
     )
 
-    $Value | ConvertTo-Json -Depth 10
+    $Value | ConvertTo-Json -Depth 32
 }
 
 function Write-InfoLine {

@@ -1,0 +1,1080 @@
+{
+    "contract_version":  "1.0.0",
+    "commands":  {
+                     "status":  {
+                                    "type":  "object",
+                                    "description":  "Status command JSON output.",
+                                    "required":  [
+                                                     "branch",
+                                                     "published",
+                                                     "upstream",
+                                                     "branch_line",
+                                                     "staged",
+                                                     "unstaged",
+                                                     "untracked"
+                                                 ],
+                                    "properties":  {
+                                                       "unstaged":  {
+                                                                        "type":  "array",
+                                                                        "description":  "Array of strings.",
+                                                                        "items":  {
+                                                                                      "type":  "string"
+                                                                                  }
+                                                                    },
+                                                       "staged":  {
+                                                                      "type":  "array",
+                                                                      "description":  "Array of strings.",
+                                                                      "items":  {
+                                                                                    "type":  "string"
+                                                                                }
+                                                                  },
+                                                       "untracked":  {
+                                                                         "type":  "array",
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   }
+                                                                     },
+                                                       "branch":  {
+                                                                      "type":  "string",
+                                                                      "description":  "Current branch name."
+                                                                  },
+                                                       "branch_line":  {
+                                                                           "type":  "string",
+                                                                           "description":  "Raw `git status --short --branch` headline."
+                                                                       },
+                                                       "upstream":  {
+                                                                        "type":  "string|null",
+                                                                        "description":  "Configured upstream ref, if present."
+                                                                    },
+                                                       "published":  {
+                                                                         "type":  "boolean",
+                                                                         "description":  "Whether the current branch exists on a remote."
+                                                                     }
+                                                   }
+                                },
+                     "dashboard":  {
+                                       "type":  "object",
+                                       "description":  "Dashboard command JSON output.",
+                                       "required":  [
+                                                        "branch",
+                                                        "working_tree",
+                                                        "publish",
+                                                        "stack",
+                                                        "quality_gates",
+                                                        "policy",
+                                                        "next_actions"
+                                                    ],
+                                       "properties":  {
+                                                          "publish":  {
+                                                                          "type":  "object",
+                                                                          "description":  "Publish/upstream status.",
+                                                                          "required":  [
+                                                                                           "upstream",
+                                                                                           "ahead",
+                                                                                           "behind"
+                                                                                       ],
+                                                                          "properties":  {
+                                                                                             "upstream":  {
+                                                                                                              "type":  "string|null",
+                                                                                                              "description":  "Configured upstream ref, if present."
+                                                                                                          },
+                                                                                             "behind":  {
+                                                                                                            "type":  "number|null",
+                                                                                                            "description":  "Commits behind upstream."
+                                                                                                        },
+                                                                                             "ahead":  {
+                                                                                                           "type":  "number|null",
+                                                                                                           "description":  "Commits ahead of upstream."
+                                                                                                       }
+                                                                                         }
+                                                                      },
+                                                          "policy":  {
+                                                                         "type":  "object",
+                                                                         "description":  "Active workflow policy flags.",
+                                                                         "required":  [
+                                                                                          "require_branch_note"
+                                                                                      ],
+                                                                         "properties":  {
+                                                                                            "require_branch_note":  {
+                                                                                                                        "type":  "boolean",
+                                                                                                                        "description":  "Whether non-default branches require a local note."
+                                                                                                                    }
+                                                                                        }
+                                                                     },
+                                                          "working_tree":  {
+                                                                               "type":  "object",
+                                                                               "description":  "Working tree counts.",
+                                                                               "required":  [
+                                                                                                "changed_files",
+                                                                                                "staged",
+                                                                                                "unstaged",
+                                                                                                "untracked"
+                                                                                            ],
+                                                                               "properties":  {
+                                                                                                  "changed_files":  {
+                                                                                                                        "type":  "number",
+                                                                                                                        "description":  "Changed file count."
+                                                                                                                    },
+                                                                                                  "unstaged":  {
+                                                                                                                   "type":  "number",
+                                                                                                                   "description":  "Unstaged file count."
+                                                                                                               },
+                                                                                                  "staged":  {
+                                                                                                                 "type":  "number",
+                                                                                                                 "description":  "Staged file count."
+                                                                                                             },
+                                                                                                  "untracked":  {
+                                                                                                                    "type":  "number",
+                                                                                                                    "description":  "Untracked file count."
+                                                                                                                }
+                                                                                              }
+                                                                           },
+                                                          "branch":  {
+                                                                         "type":  "object",
+                                                                         "description":  "Branch-level workflow metadata.",
+                                                                         "required":  [
+                                                                                          "current",
+                                                                                          "type",
+                                                                                          "default",
+                                                                                          "published",
+                                                                                          "note",
+                                                                                          "commit_convention"
+                                                                                      ],
+                                                                         "properties":  {
+                                                                                            "current":  {
+                                                                                                            "type":  "string",
+                                                                                                            "description":  "Current branch name."
+                                                                                                        },
+                                                                                            "default":  {
+                                                                                                            "type":  "string",
+                                                                                                            "description":  "Configured default branch name."
+                                                                                                        },
+                                                                                            "note":  {
+                                                                                                         "type":  "string|null",
+                                                                                                         "description":  "Local branch note, if present."
+                                                                                                     },
+                                                                                            "type":  {
+                                                                                                         "type":  "string|null",
+                                                                                                         "description":  "Detected TOI branch type."
+                                                                                                     },
+                                                                                            "commit_convention":  {
+                                                                                                                      "type":  "string",
+                                                                                                                      "description":  "Configured commit convention mode."
+                                                                                                                  },
+                                                                                            "published":  {
+                                                                                                              "type":  "boolean",
+                                                                                                              "description":  "Whether the current branch exists on a remote."
+                                                                                                          }
+                                                                                        }
+                                                                     },
+                                                          "quality_gates":  {
+                                                                                "type":  "object",
+                                                                                "description":  "Configured validation mode and latest results.",
+                                                                                "required":  [
+                                                                                                 "mode",
+                                                                                                 "has_checks",
+                                                                                                 "results"
+                                                                                             ],
+                                                                                "properties":  {
+                                                                                                   "has_checks":  {
+                                                                                                                      "type":  "boolean",
+                                                                                                                      "description":  "Whether validation commands are configured."
+                                                                                                                  },
+                                                                                                   "mode":  {
+                                                                                                                "type":  "string",
+                                                                                                                "description":  "Validation mode."
+                                                                                                            },
+                                                                                                   "results":  {
+                                                                                                                   "type":  "array",
+                                                                                                                   "description":  "Array of quality gate results.",
+                                                                                                                   "items":  {
+                                                                                                                                 "type":  "object",
+                                                                                                                                 "description":  "Validation command result.",
+                                                                                                                                 "required":  [
+                                                                                                                                                  "command",
+                                                                                                                                                  "success",
+                                                                                                                                                  "exit_code"
+                                                                                                                                              ],
+                                                                                                                                 "properties":  {
+                                                                                                                                                    "command":  {
+                                                                                                                                                                    "type":  "string",
+                                                                                                                                                                    "description":  "Validation command text."
+                                                                                                                                                                },
+                                                                                                                                                    "success":  {
+                                                                                                                                                                    "type":  "boolean",
+                                                                                                                                                                    "description":  "Whether the validation command succeeded."
+                                                                                                                                                                },
+                                                                                                                                                    "exit_code":  {
+                                                                                                                                                                      "type":  "number",
+                                                                                                                                                                      "description":  "Validation command exit code."
+                                                                                                                                                                  }
+                                                                                                                                                }
+                                                                                                                             }
+                                                                                                               }
+                                                                                               }
+                                                                            },
+                                                          "next_actions":  {
+                                                                               "type":  "array",
+                                                                               "description":  "Array of strings.",
+                                                                               "items":  {
+                                                                                             "type":  "string"
+                                                                                         }
+                                                                           },
+                                                          "stack":  {
+                                                                        "type":  "object",
+                                                                        "description":  "Stack-parent and default-branch comparison state.",
+                                                                        "required":  [
+                                                                                         "parent",
+                                                                                         "behind_default"
+                                                                                     ],
+                                                                        "properties":  {
+                                                                                           "parent":  {
+                                                                                                          "type":  "string|null",
+                                                                                                          "description":  "Recorded stack parent branch."
+                                                                                                      },
+                                                                                           "behind_default":  {
+                                                                                                                  "type":  "number|null",
+                                                                                                                  "description":  "Commits behind the default branch."
+                                                                                                              }
+                                                                                       }
+                                                                    }
+                                                      }
+                                   },
+                     "next":  {
+                                  "type":  "object",
+                                  "description":  "Next command JSON output.",
+                                  "required":  [
+                                                   "branch",
+                                                   "message",
+                                                   "published"
+                                               ],
+                                  "properties":  {
+                                                     "branch":  {
+                                                                    "type":  "string",
+                                                                    "description":  "Current branch name."
+                                                                },
+                                                     "message":  {
+                                                                     "type":  "string",
+                                                                     "description":  "Single recommended next action."
+                                                                 },
+                                                     "published":  {
+                                                                       "type":  "boolean",
+                                                                       "description":  "Whether the branch is published."
+                                                                   }
+                                                 }
+                              },
+                     "doctor":  {
+                                    "type":  "object",
+                                    "description":  "Doctor command JSON output.",
+                                    "required":  [
+                                                     "branch",
+                                                     "working_tree",
+                                                     "publish",
+                                                     "stack",
+                                                     "quality_gates",
+                                                     "policy",
+                                                     "recommendations"
+                                                 ],
+                                    "properties":  {
+                                                       "publish":  {
+                                                                       "type":  "object",
+                                                                       "description":  "Publish/upstream status.",
+                                                                       "required":  [
+                                                                                        "upstream",
+                                                                                        "ahead",
+                                                                                        "behind"
+                                                                                    ],
+                                                                       "properties":  {
+                                                                                          "upstream":  {
+                                                                                                           "type":  "string|null",
+                                                                                                           "description":  "Configured upstream ref, if present."
+                                                                                                       },
+                                                                                          "behind":  {
+                                                                                                         "type":  "number|null",
+                                                                                                         "description":  "Commits behind upstream."
+                                                                                                     },
+                                                                                          "ahead":  {
+                                                                                                        "type":  "number|null",
+                                                                                                        "description":  "Commits ahead of upstream."
+                                                                                                    }
+                                                                                      }
+                                                                   },
+                                                       "policy":  {
+                                                                      "type":  "object",
+                                                                      "description":  "Active workflow policy flags.",
+                                                                      "required":  [
+                                                                                       "require_branch_note"
+                                                                                   ],
+                                                                      "properties":  {
+                                                                                         "require_branch_note":  {
+                                                                                                                     "type":  "boolean",
+                                                                                                                     "description":  "Whether non-default branches require a local note."
+                                                                                                                 }
+                                                                                     }
+                                                                  },
+                                                       "working_tree":  {
+                                                                            "type":  "object",
+                                                                            "description":  "Working tree counts.",
+                                                                            "required":  [
+                                                                                             "changed_files",
+                                                                                             "staged",
+                                                                                             "unstaged",
+                                                                                             "untracked"
+                                                                                         ],
+                                                                            "properties":  {
+                                                                                               "changed_files":  {
+                                                                                                                     "type":  "number",
+                                                                                                                     "description":  "Changed file count."
+                                                                                                                 },
+                                                                                               "unstaged":  {
+                                                                                                                "type":  "number",
+                                                                                                                "description":  "Unstaged file count."
+                                                                                                            },
+                                                                                               "staged":  {
+                                                                                                              "type":  "number",
+                                                                                                              "description":  "Staged file count."
+                                                                                                          },
+                                                                                               "untracked":  {
+                                                                                                                 "type":  "number",
+                                                                                                                 "description":  "Untracked file count."
+                                                                                                             }
+                                                                                           }
+                                                                        },
+                                                       "branch":  {
+                                                                      "type":  "object",
+                                                                      "description":  "Branch-level workflow metadata.",
+                                                                      "required":  [
+                                                                                       "current",
+                                                                                       "type",
+                                                                                       "default",
+                                                                                       "published",
+                                                                                       "note",
+                                                                                       "commit_convention"
+                                                                                   ],
+                                                                      "properties":  {
+                                                                                         "current":  {
+                                                                                                         "type":  "string",
+                                                                                                         "description":  "Current branch name."
+                                                                                                     },
+                                                                                         "default":  {
+                                                                                                         "type":  "string",
+                                                                                                         "description":  "Configured default branch name."
+                                                                                                     },
+                                                                                         "note":  {
+                                                                                                      "type":  "string|null",
+                                                                                                      "description":  "Local branch note, if present."
+                                                                                                  },
+                                                                                         "type":  {
+                                                                                                      "type":  "string|null",
+                                                                                                      "description":  "Detected TOI branch type."
+                                                                                                  },
+                                                                                         "commit_convention":  {
+                                                                                                                   "type":  "string",
+                                                                                                                   "description":  "Configured commit convention mode."
+                                                                                                               },
+                                                                                         "published":  {
+                                                                                                           "type":  "boolean",
+                                                                                                           "description":  "Whether the current branch exists on a remote."
+                                                                                                       }
+                                                                                     }
+                                                                  },
+                                                       "quality_gates":  {
+                                                                             "type":  "object",
+                                                                             "description":  "Configured validation mode and latest results.",
+                                                                             "required":  [
+                                                                                              "mode",
+                                                                                              "has_checks",
+                                                                                              "results"
+                                                                                          ],
+                                                                             "properties":  {
+                                                                                                "has_checks":  {
+                                                                                                                   "type":  "boolean",
+                                                                                                                   "description":  "Whether validation commands are configured."
+                                                                                                               },
+                                                                                                "mode":  {
+                                                                                                             "type":  "string",
+                                                                                                             "description":  "Validation mode."
+                                                                                                         },
+                                                                                                "results":  {
+                                                                                                                "type":  "array",
+                                                                                                                "description":  "Array of quality gate results.",
+                                                                                                                "items":  {
+                                                                                                                              "type":  "object",
+                                                                                                                              "description":  "Validation command result.",
+                                                                                                                              "required":  [
+                                                                                                                                               "command",
+                                                                                                                                               "success",
+                                                                                                                                               "exit_code"
+                                                                                                                                           ],
+                                                                                                                              "properties":  {
+                                                                                                                                                 "command":  {
+                                                                                                                                                                 "type":  "string",
+                                                                                                                                                                 "description":  "Validation command text."
+                                                                                                                                                             },
+                                                                                                                                                 "success":  {
+                                                                                                                                                                 "type":  "boolean",
+                                                                                                                                                                 "description":  "Whether the validation command succeeded."
+                                                                                                                                                             },
+                                                                                                                                                 "exit_code":  {
+                                                                                                                                                                   "type":  "number",
+                                                                                                                                                                   "description":  "Validation command exit code."
+                                                                                                                                                               }
+                                                                                                                                             }
+                                                                                                                          }
+                                                                                                            }
+                                                                                            }
+                                                                         },
+                                                       "stack":  {
+                                                                     "type":  "object",
+                                                                     "description":  "Stack-parent and default-branch comparison state.",
+                                                                     "required":  [
+                                                                                      "parent",
+                                                                                      "behind_default"
+                                                                                  ],
+                                                                     "properties":  {
+                                                                                        "parent":  {
+                                                                                                       "type":  "string|null",
+                                                                                                       "description":  "Recorded stack parent branch."
+                                                                                                   },
+                                                                                        "behind_default":  {
+                                                                                                               "type":  "number|null",
+                                                                                                               "description":  "Commits behind the default branch."
+                                                                                                           }
+                                                                                    }
+                                                                 },
+                                                       "recommendations":  {
+                                                                               "type":  "array",
+                                                                               "description":  "Array of strings.",
+                                                                               "items":  {
+                                                                                             "type":  "string"
+                                                                                         }
+                                                                           }
+                                                   }
+                                },
+                     "ship":  {
+                                  "type":  "object",
+                                  "description":  "Ship command JSON output.",
+                                  "required":  [
+                                                   "branch",
+                                                   "working_tree",
+                                                   "publish",
+                                                   "stack",
+                                                   "quality_gates",
+                                                   "policy",
+                                                   "ship"
+                                               ],
+                                  "properties":  {
+                                                     "ship":  {
+                                                                  "type":  "object",
+                                                                  "description":  "Shipping assessment.",
+                                                                  "required":  [
+                                                                                   "blocking_issues",
+                                                                                   "notes",
+                                                                                   "commit_range",
+                                                                                   "shippable"
+                                                                               ],
+                                                                  "properties":  {
+                                                                                     "commit_range":  {
+                                                                                                          "type":  "array",
+                                                                                                          "description":  "Array of strings.",
+                                                                                                          "items":  {
+                                                                                                                        "type":  "string"
+                                                                                                                    }
+                                                                                                      },
+                                                                                     "shippable":  {
+                                                                                                       "type":  "boolean",
+                                                                                                       "description":  "Whether the branch is shippable."
+                                                                                                   },
+                                                                                     "blocking_issues":  {
+                                                                                                             "type":  "array",
+                                                                                                             "description":  "Array of strings.",
+                                                                                                             "items":  {
+                                                                                                                           "type":  "string"
+                                                                                                                       }
+                                                                                                         },
+                                                                                     "notes":  {
+                                                                                                   "type":  "array",
+                                                                                                   "description":  "Array of strings.",
+                                                                                                   "items":  {
+                                                                                                                 "type":  "string"
+                                                                                                             }
+                                                                                               }
+                                                                                 }
+                                                              },
+                                                     "publish":  {
+                                                                     "type":  "object",
+                                                                     "description":  "Publish/upstream status.",
+                                                                     "required":  [
+                                                                                      "upstream",
+                                                                                      "ahead",
+                                                                                      "behind"
+                                                                                  ],
+                                                                     "properties":  {
+                                                                                        "upstream":  {
+                                                                                                         "type":  "string|null",
+                                                                                                         "description":  "Configured upstream ref, if present."
+                                                                                                     },
+                                                                                        "behind":  {
+                                                                                                       "type":  "number|null",
+                                                                                                       "description":  "Commits behind upstream."
+                                                                                                   },
+                                                                                        "ahead":  {
+                                                                                                      "type":  "number|null",
+                                                                                                      "description":  "Commits ahead of upstream."
+                                                                                                  }
+                                                                                    }
+                                                                 },
+                                                     "policy":  {
+                                                                    "type":  "object",
+                                                                    "description":  "Active workflow policy flags.",
+                                                                    "required":  [
+                                                                                     "require_branch_note"
+                                                                                 ],
+                                                                    "properties":  {
+                                                                                       "require_branch_note":  {
+                                                                                                                   "type":  "boolean",
+                                                                                                                   "description":  "Whether non-default branches require a local note."
+                                                                                                               }
+                                                                                   }
+                                                                },
+                                                     "working_tree":  {
+                                                                          "type":  "object",
+                                                                          "description":  "Working tree counts.",
+                                                                          "required":  [
+                                                                                           "changed_files",
+                                                                                           "staged",
+                                                                                           "unstaged",
+                                                                                           "untracked"
+                                                                                       ],
+                                                                          "properties":  {
+                                                                                             "changed_files":  {
+                                                                                                                   "type":  "number",
+                                                                                                                   "description":  "Changed file count."
+                                                                                                               },
+                                                                                             "unstaged":  {
+                                                                                                              "type":  "number",
+                                                                                                              "description":  "Unstaged file count."
+                                                                                                          },
+                                                                                             "staged":  {
+                                                                                                            "type":  "number",
+                                                                                                            "description":  "Staged file count."
+                                                                                                        },
+                                                                                             "untracked":  {
+                                                                                                               "type":  "number",
+                                                                                                               "description":  "Untracked file count."
+                                                                                                           }
+                                                                                         }
+                                                                      },
+                                                     "branch":  {
+                                                                    "type":  "object",
+                                                                    "description":  "Branch-level workflow metadata.",
+                                                                    "required":  [
+                                                                                     "current",
+                                                                                     "type",
+                                                                                     "default",
+                                                                                     "published",
+                                                                                     "note",
+                                                                                     "commit_convention"
+                                                                                 ],
+                                                                    "properties":  {
+                                                                                       "current":  {
+                                                                                                       "type":  "string",
+                                                                                                       "description":  "Current branch name."
+                                                                                                   },
+                                                                                       "default":  {
+                                                                                                       "type":  "string",
+                                                                                                       "description":  "Configured default branch name."
+                                                                                                   },
+                                                                                       "note":  {
+                                                                                                    "type":  "string|null",
+                                                                                                    "description":  "Local branch note, if present."
+                                                                                                },
+                                                                                       "type":  {
+                                                                                                    "type":  "string|null",
+                                                                                                    "description":  "Detected TOI branch type."
+                                                                                                },
+                                                                                       "commit_convention":  {
+                                                                                                                 "type":  "string",
+                                                                                                                 "description":  "Configured commit convention mode."
+                                                                                                             },
+                                                                                       "published":  {
+                                                                                                         "type":  "boolean",
+                                                                                                         "description":  "Whether the current branch exists on a remote."
+                                                                                                     }
+                                                                                   }
+                                                                },
+                                                     "quality_gates":  {
+                                                                           "type":  "object",
+                                                                           "description":  "Configured validation mode and latest results.",
+                                                                           "required":  [
+                                                                                            "mode",
+                                                                                            "has_checks",
+                                                                                            "results"
+                                                                                        ],
+                                                                           "properties":  {
+                                                                                              "has_checks":  {
+                                                                                                                 "type":  "boolean",
+                                                                                                                 "description":  "Whether validation commands are configured."
+                                                                                                             },
+                                                                                              "mode":  {
+                                                                                                           "type":  "string",
+                                                                                                           "description":  "Validation mode."
+                                                                                                       },
+                                                                                              "results":  {
+                                                                                                              "type":  "array",
+                                                                                                              "description":  "Array of quality gate results.",
+                                                                                                              "items":  {
+                                                                                                                            "type":  "object",
+                                                                                                                            "description":  "Validation command result.",
+                                                                                                                            "required":  [
+                                                                                                                                             "command",
+                                                                                                                                             "success",
+                                                                                                                                             "exit_code"
+                                                                                                                                         ],
+                                                                                                                            "properties":  {
+                                                                                                                                               "command":  {
+                                                                                                                                                               "type":  "string",
+                                                                                                                                                               "description":  "Validation command text."
+                                                                                                                                                           },
+                                                                                                                                               "success":  {
+                                                                                                                                                               "type":  "boolean",
+                                                                                                                                                               "description":  "Whether the validation command succeeded."
+                                                                                                                                                           },
+                                                                                                                                               "exit_code":  {
+                                                                                                                                                                 "type":  "number",
+                                                                                                                                                                 "description":  "Validation command exit code."
+                                                                                                                                                             }
+                                                                                                                                           }
+                                                                                                                        }
+                                                                                                          }
+                                                                                          }
+                                                                       },
+                                                     "stack":  {
+                                                                   "type":  "object",
+                                                                   "description":  "Stack-parent and default-branch comparison state.",
+                                                                   "required":  [
+                                                                                    "parent",
+                                                                                    "behind_default"
+                                                                                ],
+                                                                   "properties":  {
+                                                                                      "parent":  {
+                                                                                                     "type":  "string|null",
+                                                                                                     "description":  "Recorded stack parent branch."
+                                                                                                 },
+                                                                                      "behind_default":  {
+                                                                                                             "type":  "number|null",
+                                                                                                             "description":  "Commits behind the default branch."
+                                                                                                         }
+                                                                                  }
+                                                               }
+                                                 }
+                              },
+                     "publish":  {
+                                     "type":  "object",
+                                     "description":  "Publish command JSON output.",
+                                     "required":  [
+                                                      "branch",
+                                                      "dry_run",
+                                                      "quality_gate_mode",
+                                                      "upstream",
+                                                      "branch_url",
+                                                      "pr_url",
+                                                      "push_output",
+                                                      "quality_gates"
+                                                  ],
+                                     "properties":  {
+                                                        "branch":  {
+                                                                       "type":  "string",
+                                                                       "description":  "Current branch name."
+                                                                   },
+                                                        "dry_run":  {
+                                                                        "type":  "boolean",
+                                                                        "description":  "Whether publish ran in dry-run mode."
+                                                                    },
+                                                        "quality_gate_mode":  {
+                                                                                  "type":  "string",
+                                                                                  "description":  "Configured quality gate mode."
+                                                                              },
+                                                        "upstream":  {
+                                                                         "type":  "string|null",
+                                                                         "description":  "Configured upstream ref before push."
+                                                                     },
+                                                        "branch_url":  {
+                                                                           "type":  "string",
+                                                                           "description":  "GitHub branch URL."
+                                                                       },
+                                                        "pr_url":  {
+                                                                       "type":  "string",
+                                                                       "description":  "GitHub compare/PR URL."
+                                                                   },
+                                                        "push_output":  {
+                                                                            "type":  "array",
+                                                                            "description":  "Array of strings.",
+                                                                            "items":  {
+                                                                                          "type":  "string"
+                                                                                      }
+                                                                        },
+                                                        "quality_gates":  {
+                                                                              "type":  "array",
+                                                                              "description":  "Array of quality gate results.",
+                                                                              "items":  {
+                                                                                            "type":  "object",
+                                                                                            "description":  "Validation command result.",
+                                                                                            "required":  [
+                                                                                                             "command",
+                                                                                                             "success",
+                                                                                                             "exit_code"
+                                                                                                         ],
+                                                                                            "properties":  {
+                                                                                                               "command":  {
+                                                                                                                               "type":  "string",
+                                                                                                                               "description":  "Validation command text."
+                                                                                                                           },
+                                                                                                               "success":  {
+                                                                                                                               "type":  "boolean",
+                                                                                                                               "description":  "Whether the validation command succeeded."
+                                                                                                                           },
+                                                                                                               "exit_code":  {
+                                                                                                                                 "type":  "number",
+                                                                                                                                 "description":  "Validation command exit code."
+                                                                                                                             }
+                                                                                                           }
+                                                                                        }
+                                                                          }
+                                                    },
+                                     "blocked_shape":  {
+                                                           "required":  [
+                                                                            "blocked",
+                                                                            "reason",
+                                                                            "branch"
+                                                                        ],
+                                                           "properties":  {
+                                                                              "blocked":  {
+                                                                                              "type":  "boolean",
+                                                                                              "description":  "Whether publish was blocked before push."
+                                                                                          },
+                                                                              "reason":  {
+                                                                                             "type":  "string",
+                                                                                             "description":  "Human-readable block reason."
+                                                                                         },
+                                                                              "branch":  {
+                                                                                             "type":  "string",
+                                                                                             "description":  "Current branch name."
+                                                                                         }
+                                                                          }
+                                                       }
+                                 },
+                     "self_check":  {
+                                        "type":  "object",
+                                        "description":  "Self-check command JSON output.",
+                                        "required":  [
+                                                         "checks",
+                                                         "summary"
+                                                     ],
+                                        "properties":  {
+                                                           "checks":  {
+                                                                          "type":  "array",
+                                                                          "description":  "Per-check results.",
+                                                                          "items":  {
+                                                                                        "type":  "object",
+                                                                                        "description":  "Per-check result.",
+                                                                                        "required":  [
+                                                                                                         "name",
+                                                                                                         "success",
+                                                                                                         "detail"
+                                                                                                     ],
+                                                                                        "properties":  {
+                                                                                                           "detail":  {
+                                                                                                                          "type":  "string"
+                                                                                                                      },
+                                                                                                           "name":  {
+                                                                                                                        "type":  "string"
+                                                                                                                    },
+                                                                                                           "success":  {
+                                                                                                                           "type":  "boolean"
+                                                                                                                       }
+                                                                                                       }
+                                                                                    }
+                                                                      },
+                                                           "summary":  {
+                                                                           "type":  "object",
+                                                                           "description":  "Aggregate pass/fail counts.",
+                                                                           "required":  [
+                                                                                            "checks",
+                                                                                            "passed",
+                                                                                            "failed"
+                                                                                        ],
+                                                                           "properties":  {
+                                                                                              "failed":  {
+                                                                                                             "type":  "number"
+                                                                                                         },
+                                                                                              "checks":  {
+                                                                                                             "type":  "number"
+                                                                                                         },
+                                                                                              "passed":  {
+                                                                                                             "type":  "number"
+                                                                                                         }
+                                                                                          }
+                                                                       }
+                                                       }
+                                    },
+                     "report":  {
+                                    "type":  "object",
+                                    "description":  "Report command JSON output.",
+                                    "required":  [
+                                                     "generated_at",
+                                                     "snapshot",
+                                                     "next_actions",
+                                                     "doctor",
+                                                     "ship"
+                                                 ],
+                                    "properties":  {
+                                                       "generated_at":  {
+                                                                            "type":  "string",
+                                                                            "description":  "Local timestamp when the report was generated."
+                                                                        },
+                                                       "snapshot":  {
+                                                                        "type":  "object",
+                                                                        "description":  "Workflow snapshot model.",
+                                                                        "required":  [
+                                                                                         "branch",
+                                                                                         "working_tree",
+                                                                                         "publish",
+                                                                                         "stack",
+                                                                                         "quality_gates",
+                                                                                         "policy"
+                                                                                     ],
+                                                                        "properties":  {
+                                                                                           "publish":  {
+                                                                                                           "type":  "object",
+                                                                                                           "description":  "Publish/upstream status.",
+                                                                                                           "required":  [
+                                                                                                                            "upstream",
+                                                                                                                            "ahead",
+                                                                                                                            "behind"
+                                                                                                                        ],
+                                                                                                           "properties":  {
+                                                                                                                              "upstream":  {
+                                                                                                                                               "type":  "string|null",
+                                                                                                                                               "description":  "Configured upstream ref, if present."
+                                                                                                                                           },
+                                                                                                                              "behind":  {
+                                                                                                                                             "type":  "number|null",
+                                                                                                                                             "description":  "Commits behind upstream."
+                                                                                                                                         },
+                                                                                                                              "ahead":  {
+                                                                                                                                            "type":  "number|null",
+                                                                                                                                            "description":  "Commits ahead of upstream."
+                                                                                                                                        }
+                                                                                                                          }
+                                                                                                       },
+                                                                                           "policy":  {
+                                                                                                          "type":  "object",
+                                                                                                          "description":  "Active workflow policy flags.",
+                                                                                                          "required":  [
+                                                                                                                           "require_branch_note"
+                                                                                                                       ],
+                                                                                                          "properties":  {
+                                                                                                                             "require_branch_note":  {
+                                                                                                                                                         "type":  "boolean",
+                                                                                                                                                         "description":  "Whether non-default branches require a local note."
+                                                                                                                                                     }
+                                                                                                                         }
+                                                                                                      },
+                                                                                           "working_tree":  {
+                                                                                                                "type":  "object",
+                                                                                                                "description":  "Working tree counts.",
+                                                                                                                "required":  [
+                                                                                                                                 "changed_files",
+                                                                                                                                 "staged",
+                                                                                                                                 "unstaged",
+                                                                                                                                 "untracked"
+                                                                                                                             ],
+                                                                                                                "properties":  {
+                                                                                                                                   "changed_files":  {
+                                                                                                                                                         "type":  "number",
+                                                                                                                                                         "description":  "Changed file count."
+                                                                                                                                                     },
+                                                                                                                                   "unstaged":  {
+                                                                                                                                                    "type":  "number",
+                                                                                                                                                    "description":  "Unstaged file count."
+                                                                                                                                                },
+                                                                                                                                   "staged":  {
+                                                                                                                                                  "type":  "number",
+                                                                                                                                                  "description":  "Staged file count."
+                                                                                                                                              },
+                                                                                                                                   "untracked":  {
+                                                                                                                                                     "type":  "number",
+                                                                                                                                                     "description":  "Untracked file count."
+                                                                                                                                                 }
+                                                                                                                               }
+                                                                                                            },
+                                                                                           "branch":  {
+                                                                                                          "type":  "object",
+                                                                                                          "description":  "Branch-level workflow metadata.",
+                                                                                                          "required":  [
+                                                                                                                           "current",
+                                                                                                                           "type",
+                                                                                                                           "default",
+                                                                                                                           "published",
+                                                                                                                           "note",
+                                                                                                                           "commit_convention"
+                                                                                                                       ],
+                                                                                                          "properties":  {
+                                                                                                                             "current":  {
+                                                                                                                                             "type":  "string",
+                                                                                                                                             "description":  "Current branch name."
+                                                                                                                                         },
+                                                                                                                             "default":  {
+                                                                                                                                             "type":  "string",
+                                                                                                                                             "description":  "Configured default branch name."
+                                                                                                                                         },
+                                                                                                                             "note":  {
+                                                                                                                                          "type":  "string|null",
+                                                                                                                                          "description":  "Local branch note, if present."
+                                                                                                                                      },
+                                                                                                                             "type":  {
+                                                                                                                                          "type":  "string|null",
+                                                                                                                                          "description":  "Detected TOI branch type."
+                                                                                                                                      },
+                                                                                                                             "commit_convention":  {
+                                                                                                                                                       "type":  "string",
+                                                                                                                                                       "description":  "Configured commit convention mode."
+                                                                                                                                                   },
+                                                                                                                             "published":  {
+                                                                                                                                               "type":  "boolean",
+                                                                                                                                               "description":  "Whether the current branch exists on a remote."
+                                                                                                                                           }
+                                                                                                                         }
+                                                                                                      },
+                                                                                           "quality_gates":  {
+                                                                                                                 "type":  "object",
+                                                                                                                 "description":  "Configured validation mode and latest results.",
+                                                                                                                 "required":  [
+                                                                                                                                  "mode",
+                                                                                                                                  "has_checks",
+                                                                                                                                  "results"
+                                                                                                                              ],
+                                                                                                                 "properties":  {
+                                                                                                                                    "has_checks":  {
+                                                                                                                                                       "type":  "boolean",
+                                                                                                                                                       "description":  "Whether validation commands are configured."
+                                                                                                                                                   },
+                                                                                                                                    "mode":  {
+                                                                                                                                                 "type":  "string",
+                                                                                                                                                 "description":  "Validation mode."
+                                                                                                                                             },
+                                                                                                                                    "results":  {
+                                                                                                                                                    "type":  "array",
+                                                                                                                                                    "description":  "Array of quality gate results.",
+                                                                                                                                                    "items":  {
+                                                                                                                                                                  "type":  "object",
+                                                                                                                                                                  "description":  "Validation command result.",
+                                                                                                                                                                  "required":  [
+                                                                                                                                                                                   "command",
+                                                                                                                                                                                   "success",
+                                                                                                                                                                                   "exit_code"
+                                                                                                                                                                               ],
+                                                                                                                                                                  "properties":  {
+                                                                                                                                                                                     "command":  {
+                                                                                                                                                                                                     "type":  "string",
+                                                                                                                                                                                                     "description":  "Validation command text."
+                                                                                                                                                                                                 },
+                                                                                                                                                                                     "success":  {
+                                                                                                                                                                                                     "type":  "boolean",
+                                                                                                                                                                                                     "description":  "Whether the validation command succeeded."
+                                                                                                                                                                                                 },
+                                                                                                                                                                                     "exit_code":  {
+                                                                                                                                                                                                       "type":  "number",
+                                                                                                                                                                                                       "description":  "Validation command exit code."
+                                                                                                                                                                                                   }
+                                                                                                                                                                                 }
+                                                                                                                                                              }
+                                                                                                                                                }
+                                                                                                                                }
+                                                                                                             },
+                                                                                           "stack":  {
+                                                                                                         "type":  "object",
+                                                                                                         "description":  "Stack-parent and default-branch comparison state.",
+                                                                                                         "required":  [
+                                                                                                                          "parent",
+                                                                                                                          "behind_default"
+                                                                                                                      ],
+                                                                                                         "properties":  {
+                                                                                                                            "parent":  {
+                                                                                                                                           "type":  "string|null",
+                                                                                                                                           "description":  "Recorded stack parent branch."
+                                                                                                                                       },
+                                                                                                                            "behind_default":  {
+                                                                                                                                                   "type":  "number|null",
+                                                                                                                                                   "description":  "Commits behind the default branch."
+                                                                                                                                               }
+                                                                                                                        }
+                                                                                                     }
+                                                                                       }
+                                                                    },
+                                                       "doctor":  {
+                                                                      "type":  "object",
+                                                                      "description":  "Doctor recommendations.",
+                                                                      "required":  [
+                                                                                       "recommendations"
+                                                                                   ],
+                                                                      "properties":  {
+                                                                                         "recommendations":  {
+                                                                                                                 "type":  "array",
+                                                                                                                 "description":  "Array of strings.",
+                                                                                                                 "items":  {
+                                                                                                                               "type":  "string"
+                                                                                                                           }
+                                                                                                             }
+                                                                                     }
+                                                                  },
+                                                       "next_actions":  {
+                                                                            "type":  "array",
+                                                                            "description":  "Array of strings.",
+                                                                            "items":  {
+                                                                                          "type":  "string"
+                                                                                      }
+                                                                        },
+                                                       "ship":  {
+                                                                    "type":  "object",
+                                                                    "description":  "Shipping assessment.",
+                                                                    "required":  [
+                                                                                     "blocking_issues",
+                                                                                     "notes",
+                                                                                     "commit_range",
+                                                                                     "shippable"
+                                                                                 ],
+                                                                    "properties":  {
+                                                                                       "commit_range":  {
+                                                                                                            "type":  "array",
+                                                                                                            "description":  "Array of strings.",
+                                                                                                            "items":  {
+                                                                                                                          "type":  "string"
+                                                                                                                      }
+                                                                                                        },
+                                                                                       "shippable":  {
+                                                                                                         "type":  "boolean",
+                                                                                                         "description":  "Whether the branch is shippable."
+                                                                                                     },
+                                                                                       "blocking_issues":  {
+                                                                                                               "type":  "array",
+                                                                                                               "description":  "Array of strings.",
+                                                                                                               "items":  {
+                                                                                                                             "type":  "string"
+                                                                                                                         }
+                                                                                                           },
+                                                                                       "notes":  {
+                                                                                                     "type":  "array",
+                                                                                                     "description":  "Array of strings.",
+                                                                                                     "items":  {
+                                                                                                                   "type":  "string"
+                                                                                                               }
+                                                                                                 }
+                                                                                   }
+                                                                }
+                                                   }
+                                }
+                 }
+}

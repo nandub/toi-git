@@ -499,6 +499,10 @@
                                                                         "description":  "Whether publish ran in dry-run mode.",
                                                                         "type":  "boolean"
                                                                     },
+                                                        "github_cli":  {
+                                                                           "description":  "Whether gh.exe is available on PATH.",
+                                                                           "type":  "boolean"
+                                                                       },
                                                         "pr_url":  {
                                                                        "description":  "GitHub compare/PR URL.",
                                                                        "type":  "string"
@@ -553,6 +557,7 @@
                                                       "upstream",
                                                       "branch_url",
                                                       "pr_url",
+                                                      "github_cli",
                                                       "push_output",
                                                       "quality_gates"
                                                   ],
@@ -1223,4 +1228,3 @@
                  },
     "contract_version":  "1.0.0"
 }
-

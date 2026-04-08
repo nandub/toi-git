@@ -46,6 +46,12 @@ function Invoke-ToiCommand {
     Write-Section 'Open'
     Write-InfoLine $finalUrl
 
+    if ($target -eq 'pr') {
+        $openResult = Open-ToiPullRequest -FallbackUrl $finalUrl
+        Write-InfoLine "Method: $($openResult.Method)"
+        return
+    }
+
     Start-Process $finalUrl | Out-Null
 }
 

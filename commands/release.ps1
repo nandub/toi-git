@@ -4,14 +4,16 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     $json = $Arguments -contains '-Json'
-    $filteredArguments = @($Arguments | Where-Object { $_ -ne '-Json' })
+    $dryRun = $Arguments -contains '-DryRun'
+    $draft = $Arguments -contains '-Draft'
+    $filteredArguments = @($Arguments | Where-Object { $_ -notin @('-Json', '-DryRun', '-Draft') })
 
     if (-not (Test-ReleaseBranchesEnabled)) {
         throw 'Release branches are disabled in toi.json.'
     }
 
     if ($filteredArguments.Count -lt 2) {
-        throw 'Usage: .\\toi.ps1 release <start|notes|tag> <version>'
+        throw 'Usage: .\\toi.ps1 release <start|notes|tag|publish> <version>'
     }
 
     $action = $filteredArguments[0].ToLowerInvariant()
@@ -108,8 +110,49 @@ function Invoke-ToiCommand {
             Write-InfoLine "Message: $message"
             $result.Output | ForEach-Object { Write-Host $_ }
         }
+        'publish' {
+            if (-not (Test-TagExists -TagName $tagName) -and -not $dryRun) {
+                throw "Tag '$tagName' does not exist yet."
+            }
+
+            if (-not (Test-Path -LiteralPath $notesFile)) {
+                throw "Release notes file '$notesFile' does not exist."
+            }
+
+            $title = "Release $version"
+            $publishResult = Publish-ToiGitHubRelease -TagName $tagName -Title $title -NotesFile $notesFile -Draft:$draft -DryRun:$dryRun
+
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'publish'
+                    version = $version
+                    tag = $tagName
+                    title = $title
+                    notes_file = $notesFile
+                    draft = $draft
+                    dry_run = $dryRun
+                    github_cli = (Test-GitHubCliAvailable)
+                    gh_arguments = @($publishResult.Arguments)
+                    output = @($publishResult.Output)
+                })
+                return
+            }
+
+            Write-Section 'Release Publish'
+            Write-InfoLine "Tag: $tagName"
+            Write-InfoLine "Title: $title"
+            Write-InfoLine "Notes file: $notesFile"
+            Write-InfoLine "Draft: $draft"
+            Write-InfoLine "Dry run: $dryRun"
+            if ($dryRun) {
+                Write-InfoLine ("gh " + ($publishResult.Arguments -join ' '))
+                return
+            }
+
+            $publishResult.Output | ForEach-Object { Write-Host $_ }
+        }
         default {
-            throw 'Usage: .\\toi.ps1 release <start|notes|tag> <version>'
+            throw 'Usage: .\\toi.ps1 release <start|notes|tag|publish> <version>'
         }
     }
 }

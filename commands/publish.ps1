@@ -12,6 +12,7 @@ function Invoke-ToiCommand {
     $openPrAfterPush = $Arguments -contains '-Pr'
     $dryRun = $Arguments -contains '-DryRun'
     $qualityGateMode = Get-QualityGateMode
+    $ghAvailable = Test-GitHubCliAvailable
 
     if ($protectedBranches -contains $branch) {
         if ($json) {
@@ -100,6 +101,7 @@ function Invoke-ToiCommand {
         Write-InfoLine "Branch: $branch"
         Write-InfoLine "Dry run: $dryRun"
         Write-InfoLine "Quality gate mode: $qualityGateMode"
+        Write-InfoLine "GitHub CLI: $ghAvailable"
     }
 
     if ($upstreamRef) {
@@ -130,6 +132,7 @@ function Invoke-ToiCommand {
             upstream = $upstreamRef
             branch_url = $branchUrl
             pr_url = $prUrl
+            github_cli = $ghAvailable
             push_output = @($pushResult.Output)
             quality_gates = @($validationSuite.Results | ForEach-Object {
                 [PSCustomObject]@{
@@ -151,7 +154,8 @@ function Invoke-ToiCommand {
     }
 
     if ($openPrAfterPush) {
-        Start-Process $prUrl | Out-Null
+        $openResult = Open-ToiPullRequest -FallbackUrl $prUrl
+        Write-InfoLine "Open method: $($openResult.Method)"
     }
     elseif ($openAfterPush) {
         Start-Process $branchUrl | Out-Null

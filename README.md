@@ -53,6 +53,8 @@ That covers the core TOI path:
 - publish it to the remote
 - open the PR path
 
+If `gh.exe` is available on `PATH`, TOI will prefer GitHub-native PR open/create flows for `publish -Pr` and `open pr`.
+
 ## Quickstart
 
 Run TOI Git from inside a Git repository.
@@ -99,13 +101,13 @@ If you just want a fast repo check:
 - `doctor`: inspect repo state and suggest next actions
 - `ship`: assess whether a branch is ready for push or PR
 - `publish`: push the current branch and print or open the PR path
-- `open`: open the repo, branch, compare view, or PR path in a browser
+- `open`: open the repo, branch, compare view, or PR path in a browser or with `gh`
 - `note`: store a local branch note in `.git`
 
 ### Release And Stack Flow
 
 - `stack`: create or restack dependent branches
-- `release`: start releases, scaffold notes, and create tags
+- `release`: start releases, scaffold notes, create tags, and publish GitHub releases
 - `hotfix`: create hotfix branches from the default branch
 - `worktree`: list or add Git worktrees
 - `branch-clean`: list merged local branches and optionally delete them
@@ -141,7 +143,10 @@ If you just want a fast repo check:
 .\\toi.ps1 release start 1.4.0
 .\\toi.ps1 release notes 1.4.0
 .\\toi.ps1 release tag 1.4.0
+.\\toi.ps1 release publish 1.4.0
 ```
+
+If `gh.exe` is installed, `release publish` uses `gh release create` with your generated notes file.
 
 ### Inspect Repo State In CI Or Scripts
 
@@ -269,6 +274,7 @@ More examples:
 .\\toi.ps1 stack restack
 .\\toi.ps1 stack parent
 .\\toi.ps1 hotfix start payment-timeout
+.\\toi.ps1 release publish 1.4.0 -DryRun
 ```
 
 TOI Git stores stack parent metadata and branch notes under the local `.git` directory so this workflow state does not pollute tracked files.

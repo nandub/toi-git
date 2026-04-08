@@ -552,6 +552,145 @@ function Get-PullRequestBrowseUrl {
     return "$RepositoryUrl/compare/$BaseBranch...${HeadBranch}?expand=1&quick_pull=1"
 }
 
+function Test-GitHubCliAvailable {
+    $command = Get-Command gh -ErrorAction SilentlyContinue
+    return $null -ne $command
+}
+
+function Invoke-GitHubCli {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+
+        [switch]$AllowFailure
+    )
+
+    $argumentString = ($Arguments | ForEach-Object {
+            if ($_ -match '[\s"]') {
+                '"' + ($_ -replace '(\\*)"', '$1$1\"') + '"'
+            }
+            else {
+                $_
+            }
+        }) -join ' '
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = 'gh'
+    $startInfo.Arguments = $argumentString
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+    $startInfo.WorkingDirectory = Get-RepositoryRoot
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
+
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+
+    $result = @()
+    if ($stdout) {
+        $result += ($stdout -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
+    }
+
+    if ($stderr) {
+        $result += ($stderr -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
+    }
+
+    if (-not $AllowFailure -and $process.ExitCode -ne 0) {
+        $message = if ($result) { ($result -join [Environment]::NewLine) } else { 'GitHub CLI command failed.' }
+        throw $message
+    }
+
+    return [PSCustomObject]@{
+        Output   = @($result)
+        ExitCode = $process.ExitCode
+    }
+}
+
+function Open-ToiPullRequest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FallbackUrl
+    )
+
+    if (-not (Test-GitHubCliAvailable)) {
+        Start-Process $FallbackUrl | Out-Null
+        return [PSCustomObject]@{
+            Method = 'browser'
+            Detail = $FallbackUrl
+        }
+    }
+
+    $viewResult = Invoke-GitHubCli -Arguments @('pr', 'view', '--web') -AllowFailure
+    if ($viewResult.ExitCode -eq 0) {
+        return [PSCustomObject]@{
+            Method = 'gh'
+            Detail = 'Opened pull request with gh pr view --web.'
+        }
+    }
+
+    $createResult = Invoke-GitHubCli -Arguments @('pr', 'create', '--fill', '--web') -AllowFailure
+    if ($createResult.ExitCode -eq 0) {
+        return [PSCustomObject]@{
+            Method = 'gh'
+            Detail = 'Opened pull request creation flow with gh pr create --fill --web.'
+        }
+    }
+
+    Start-Process $FallbackUrl | Out-Null
+    return [PSCustomObject]@{
+        Method = 'browser'
+        Detail = $FallbackUrl
+    }
+}
+
+function Publish-ToiGitHubRelease {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TagName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NotesFile,
+
+        [switch]$Draft,
+
+        [switch]$DryRun
+    )
+
+    if (-not (Test-GitHubCliAvailable)) {
+        throw 'gh.exe is not available on PATH.'
+    }
+
+    $arguments = @('release', 'create', $TagName, '--title', $Title, '--notes-file', $NotesFile)
+    if ($Draft) {
+        $arguments += '--draft'
+    }
+
+    if ($DryRun) {
+        return [PSCustomObject]@{
+            Arguments = @($arguments)
+            DryRun = $true
+            Output = @()
+            ExitCode = 0
+        }
+    }
+
+    $result = Invoke-GitHubCli -Arguments $arguments
+    return [PSCustomObject]@{
+        Arguments = @($arguments)
+        DryRun = $false
+        Output = @($result.Output)
+        ExitCode = $result.ExitCode
+    }
+}
+
 function Invoke-ToiValidationCommand {
     param(
         [Parameter(Mandatory = $true)]
@@ -1641,7 +1780,7 @@ function Get-ToiJsonCommandSchemas {
         publish = [PSCustomObject]@{
             type = 'object'
             description = 'Publish command JSON output.'
-            required = @('branch', 'dry_run', 'quality_gate_mode', 'upstream', 'branch_url', 'pr_url', 'push_output', 'quality_gates')
+            required = @('branch', 'dry_run', 'quality_gate_mode', 'upstream', 'branch_url', 'pr_url', 'github_cli', 'push_output', 'quality_gates')
             properties = [PSCustomObject]@{
                 branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
                 dry_run = New-ToiSchemaField -Type 'boolean' -Description 'Whether publish ran in dry-run mode.'
@@ -1649,6 +1788,7 @@ function Get-ToiJsonCommandSchemas {
                 upstream = New-ToiSchemaField -Type 'string|null' -Description 'Configured upstream ref before push.'
                 branch_url = New-ToiSchemaField -Type 'string' -Description 'GitHub branch URL.'
                 pr_url = New-ToiSchemaField -Type 'string' -Description 'GitHub compare/PR URL.'
+                github_cli = New-ToiSchemaField -Type 'boolean' -Description 'Whether gh.exe is available on PATH.'
                 push_output = $stringArray
                 quality_gates = $qualityGateArray
             }

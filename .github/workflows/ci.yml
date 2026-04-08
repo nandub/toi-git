@@ -20,19 +20,27 @@ jobs:
 
       - name: Capture TOI self-check JSON
         shell: pwsh
-        run: ./tests/self-check.ps1 -Json | Out-File -FilePath toi-self-check.json -Encoding utf8
+        run: |
+          $selfCheck = & pwsh -NoProfile -ExecutionPolicy Bypass -File ./tests/self-check.ps1 -Json
+          $selfCheck | Out-File -FilePath toi-self-check.json -Encoding utf8
 
       - name: Capture TOI workflow report
         shell: pwsh
-        run: ./toi.ps1 report | Out-File -FilePath toi-report.md -Encoding utf8
+        run: |
+          $report = & pwsh -NoProfile -ExecutionPolicy Bypass -File ./toi.ps1 report
+          $report | Out-File -FilePath toi-report.md -Encoding utf8
 
       - name: Capture TOI workflow report JSON
         shell: pwsh
-        run: ./toi.ps1 report -Json | Out-File -FilePath toi-report.json -Encoding utf8
+        run: |
+          $reportJson = & pwsh -NoProfile -ExecutionPolicy Bypass -File ./toi.ps1 report -Json
+          $reportJson | Out-File -FilePath toi-report.json -Encoding utf8
 
       - name: Capture TOI schema JSON
         shell: pwsh
-        run: ./toi.ps1 schema -Json -Snapshot | Out-File -FilePath toi-schema.json -Encoding utf8
+        run: |
+          $schema = & pwsh -NoProfile -ExecutionPolicy Bypass -File ./toi.ps1 schema -Json -Snapshot
+          $schema | Out-File -FilePath toi-schema.json -Encoding utf8
 
       - name: Publish job summary
         shell: pwsh

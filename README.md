@@ -143,7 +143,9 @@ Use them this way:
 - `report -Json` for a CI-friendly workflow summary
 - `schema -Json` for the current JSON contract surface
 - `schema -Json -Snapshot` for the stable committed contract form without timestamps
+- `schema -CheckSnapshot` to verify that the committed snapshot is current
 - `schema -WriteSnapshot` to intentionally refresh `contracts/toi-schema.json`
+- `schema -BumpVersion patch|minor|major` to update the contract version and refresh the snapshot together
 - `self-check -Json` for machine-readable local verification results
 
 The built-in `self-check` validates core JSON outputs against the declared contracts from `schema`, so automation drift is caught locally before CI.

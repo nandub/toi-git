@@ -1376,6 +1376,60 @@ function Get-ToiContractSnapshotPath {
     return (Join-Path (Get-RepositoryRoot) 'contracts\toi-schema.json')
 }
 
+function Set-ToiContractVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    if (-not (Test-ToiValidContractVersion -Version $Version)) {
+        throw "Invalid contract version '$Version'. Expected semantic versioning like 1.2.3."
+    }
+
+    $versionPath = Join-Path (Get-RepositoryRoot) 'contracts\contract-version.txt'
+    $directory = Split-Path -Parent $versionPath
+    if (-not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    Set-Content -LiteralPath $versionPath -Value $Version
+    return $versionPath
+}
+
+function Get-ToiNextContractVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('major', 'minor', 'patch')]
+        [string]$Bump
+    )
+
+    $current = Get-ToiContractVersion
+    if ($current -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+        throw "Invalid contract version '$current'. Expected semantic versioning like 1.2.3."
+    }
+
+    $major = [int]$matches[1]
+    $minor = [int]$matches[2]
+    $patch = [int]$matches[3]
+
+    switch ($Bump) {
+        'major' {
+            $major++
+            $minor = 0
+            $patch = 0
+        }
+        'minor' {
+            $minor++
+            $patch = 0
+        }
+        'patch' {
+            $patch++
+        }
+    }
+
+    return "$major.$minor.$patch"
+}
+
 function New-ToiSchemaField {
     param(
         [Parameter(Mandatory = $true)]
@@ -1737,4 +1791,28 @@ function Convert-ToiValueToCanonicalJson {
 
     $canonical = Convert-ToiValueToCanonicalForm -Value $Value
     return ($canonical | ConvertTo-Json -Depth 64)
+}
+
+function Test-ToiContractSnapshotMatchesCurrent {
+    $snapshotPath = Get-ToiContractSnapshotPath
+    if (-not (Test-Path -LiteralPath $snapshotPath)) {
+        return [PSCustomObject]@{
+            matches = $false
+            reason = 'contracts/toi-schema.json is missing.'
+            path = $snapshotPath
+            contract_version = Get-ToiContractVersion
+        }
+    }
+
+    $expectedSnapshot = Get-Content -LiteralPath $snapshotPath -Raw | ConvertFrom-Json
+    $currentSnapshot = Get-ToiSchemaSnapshotModel
+    $expectedCanonical = Convert-ToiValueToCanonicalJson -Value $expectedSnapshot
+    $currentCanonical = Convert-ToiValueToCanonicalJson -Value $currentSnapshot
+
+    return [PSCustomObject]@{
+        matches = ($expectedCanonical -eq $currentCanonical)
+        reason = if ($expectedCanonical -eq $currentCanonical) { 'Committed schema snapshot matches current contract output.' } else { 'Committed contract snapshot is out of date. Regenerate contracts/toi-schema.json.' }
+        path = $snapshotPath
+        contract_version = Get-ToiContractVersion
+    }
 }

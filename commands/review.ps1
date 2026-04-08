@@ -12,7 +12,29 @@ function Invoke-ToiCommand {
     }
 
     $json = $Arguments -contains '-Json'
-    $review = Get-ToiPullRequestReviewSummary
+    try {
+        $review = Get-ToiPullRequestReviewSummary
+    }
+    catch {
+        if (Test-ToiMissingPullRequestMessage -Message $_.Exception.Message) {
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    has_pull_request = $false
+                    branch = Get-CurrentBranchName
+                    action = 'review'
+                    message = $_.Exception.Message
+                })
+                return
+            }
+
+            Write-Section 'Review'
+            Write-KeyValue 'Branch' (Get-CurrentBranchName)
+            Write-InfoLine $_.Exception.Message
+            return
+        }
+
+        throw
+    }
 
     if ($json) {
         Write-Json $review

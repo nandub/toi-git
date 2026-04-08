@@ -730,6 +730,18 @@ function Get-ToiMissingPullRequestMessage {
     return "No pull request exists for branch '$BranchName'. Create one from a feature branch with '.\toi.ps1 publish -Pr' or 'gh pr create --fill --web'."
 }
 
+function Test-ToiMissingPullRequestMessage {
+    param(
+        [string]$Message
+    )
+
+    if (-not $Message) {
+        return $false
+    }
+
+    return $Message -like 'No pull request exists for branch *'
+}
+
 function Publish-ToiGitHubRelease {
     param(
         [Parameter(Mandatory = $true)]

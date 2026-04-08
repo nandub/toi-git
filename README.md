@@ -143,6 +143,7 @@ Use them this way:
 - `report -Json` for a CI-friendly workflow summary
 - `schema -Json` for the current JSON contract surface
 - `schema -Json -Snapshot` for the stable committed contract form without timestamps
+- `schema -WriteSnapshot` to intentionally refresh `contracts/toi-schema.json`
 - `self-check -Json` for machine-readable local verification results
 
 The built-in `self-check` validates core JSON outputs against the declared contracts from `schema`, so automation drift is caught locally before CI.
@@ -153,7 +154,7 @@ GitHub Actions currently does this on pushes to `main` and on pull requests:
 - runs the built-in self-check
 - uploads the self-check JSON artifact
 - uploads workflow report artifacts in markdown and JSON
-- uploads the JSON contract artifact from `schema -Json`
+- uploads the stable JSON contract artifact from `schema -Json -Snapshot`
 - publishes the markdown workflow report as the job summary
 
 ## Config

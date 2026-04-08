@@ -63,7 +63,7 @@ function Show-Help {
     Write-Host '  note          Set or show a local note for the current branch'
     Write-Host '  self-check    Run lightweight local verification for TOI Git'
     Write-Host '  report        Generate a workflow report in markdown or json'
-    Write-Host '  schema        Show JSON automation contracts for TOI Git'
+    Write-Host '  schema        Show or refresh JSON automation contracts for TOI Git'
     Write-Host '  stack         Create or restack dependent branches'
     Write-Host '  release       Start a release branch'
     Write-Host '  hotfix        Start a hotfix branch from the default branch'

@@ -32,7 +32,7 @@ jobs:
 
       - name: Capture TOI schema JSON
         shell: pwsh
-        run: ./toi.ps1 schema -Json | Out-File -FilePath toi-schema.json -Encoding utf8
+        run: ./toi.ps1 schema -Json -Snapshot | Out-File -FilePath toi-schema.json -Encoding utf8
 
       - name: Publish job summary
         shell: pwsh

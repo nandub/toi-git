@@ -6,9 +6,15 @@ function Invoke-ToiCommand {
     $statusLines = Get-StatusLines
     $branchLine = $statusLines | Select-Object -First 1
     $fileLines = $statusLines | Select-Object -Skip 1
+    $snapshot = Get-ToiWorkflowSnapshot
 
     Write-Section 'Status'
-    Write-Host $branchLine
+    Write-KeyValue 'Branch' $snapshot.Branch
+    Write-KeyValue 'Published' $snapshot.Published
+    if ($snapshot.UpstreamRef) {
+        Write-KeyValue 'Upstream' $snapshot.UpstreamRef
+    }
+    Write-InfoLine $branchLine
 
     if (-not $fileLines -or $fileLines.Count -eq 0) {
         Write-SuccessLine 'Working tree is clean.'

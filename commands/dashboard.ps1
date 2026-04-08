@@ -4,57 +4,57 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     $sections = Get-DashboardSections
-    $branch = Get-CurrentBranchName
-    $defaultBranch = Get-DefaultBranchName
-    $upstreamRef = Get-UpstreamRef
-    $published = Test-CurrentBranchPublished
-    $status = Get-StatusSummary
-    $parent = Get-ToiStackParent -BranchName $branch
-    $note = Get-ToiBranchNote -BranchName $branch
-    $commitConvention = Get-CommitConvention
-    $validationSuite = Invoke-ToiValidationSuite
+    $snapshot = Get-ToiWorkflowSnapshot
     $nextActions = New-Object System.Collections.Generic.List[string]
 
-    if ($status.Unstaged -gt 0 -or $status.Untracked -gt 0) {
+    if ($snapshot.Status.Unstaged -gt 0 -or $snapshot.Status.Untracked -gt 0) {
         $nextActions.Add('Clean up or checkpoint the working tree with `.\toi.ps1 save`.')
     }
 
-    if ($branch -ne $defaultBranch -and -not $published) {
+    if ($snapshot.Branch -ne $snapshot.DefaultBranch -and -not $snapshot.Published) {
         $nextActions.Add('Publish the branch with `.\toi.ps1 publish` when it is ready.')
     }
 
-    if ($branch -ne $defaultBranch -and $published) {
+    if ($snapshot.Branch -ne $snapshot.DefaultBranch -and $snapshot.Published) {
         $nextActions.Add('Open the PR path with `.\toi.ps1 open pr`.')
     }
 
-    if ($branch -eq $defaultBranch -and $status.ChangedFiles -eq 0) {
+    if ($snapshot.Branch -eq $snapshot.DefaultBranch -and $snapshot.Status.ChangedFiles -eq 0) {
         $nextActions.Add('Create a typed branch with `.\toi.ps1 start feature <name>` for the next change.')
     }
 
-    if ((Test-BranchNoteRequired) -and $branch -ne $defaultBranch -and -not $note) {
+    if ($snapshot.RequireBranchNote -and $snapshot.Branch -ne $snapshot.DefaultBranch -and -not $snapshot.Note) {
         $nextActions.Add('Add a branch note with `.\toi.ps1 note set <text>`.')
+    }
+
+    if ($snapshot.UpstreamTracking -and $snapshot.UpstreamTracking.RightAhead -gt 0) {
+        $nextActions.Add('Sync the branch with `.\toi.ps1 sync` before pushing or opening a PR.')
+    }
+
+    if ($snapshot.DefaultTracking -and $snapshot.DefaultTracking.RightAhead -gt 0) {
+        $nextActions.Add("Restack or rebase on $($snapshot.DefaultBranch) to pick up newer commits.")
     }
 
     if ($sections -contains 'branch') {
         Write-Section 'Branch'
-        Write-Host "Current: $branch"
-        Write-Host "Default: $defaultBranch"
-        Write-Host "Published: $published"
-        Write-Host "Working tree: $($status.ChangedFiles) changed file(s)"
-        Write-Host "Commit convention: $commitConvention"
-        if ($note) {
-            Write-Host "Note: $note"
+        Write-KeyValue 'Current' $snapshot.Branch
+        Write-KeyValue 'Default' $snapshot.DefaultBranch
+        Write-KeyValue 'Type' $(if ($snapshot.BranchType) { $snapshot.BranchType } else { 'n/a' })
+        Write-KeyValue 'Published' $snapshot.Published
+        Write-KeyValue 'Working tree' "$($snapshot.Status.ChangedFiles) changed file(s)"
+        Write-KeyValue 'Commit style' $snapshot.CommitConvention
+        if ($snapshot.Note) {
+            Write-KeyValue 'Note' $snapshot.Note
         }
     }
 
     if ($sections -contains 'publish') {
         Write-Section 'Publish'
-        if ($upstreamRef) {
-            $tracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $upstreamRef
-            Write-Host "Upstream: $upstreamRef"
-            if ($tracking) {
-                Write-Host "Ahead: $($tracking.LeftAhead)"
-                Write-Host "Behind: $($tracking.RightAhead)"
+        if ($snapshot.UpstreamRef) {
+            Write-KeyValue 'Upstream' $snapshot.UpstreamRef
+            if ($snapshot.UpstreamTracking) {
+                Write-KeyValue 'Ahead' $snapshot.UpstreamTracking.LeftAhead
+                Write-KeyValue 'Behind' $snapshot.UpstreamTracking.RightAhead
             }
         }
         else {
@@ -64,25 +64,30 @@ function Invoke-ToiCommand {
 
     if ($sections -contains 'stack') {
         Write-Section 'Stack'
-        if ($parent) {
-            Write-Host "Parent: $parent"
+        if ($snapshot.StackParent) {
+            Write-KeyValue 'Parent' $snapshot.StackParent
         }
         else {
             Write-InfoLine 'No explicit stack parent.'
+        }
+
+        if ($snapshot.DefaultTracking) {
+            Write-KeyValue "Behind $($snapshot.DefaultBranch)" $snapshot.DefaultTracking.RightAhead
         }
     }
 
     if ($sections -contains 'gates') {
         Write-Section 'Quality Gates'
-        Write-Host "Mode: $(Get-QualityGateMode)"
-        if ($validationSuite.HasChecks) {
-            foreach ($result in $validationSuite.Results) {
+        Write-KeyValue 'Mode' (Get-QualityGateMode)
+        if ($snapshot.ValidationSuite.HasChecks) {
+            foreach ($result in $snapshot.ValidationSuite.Results) {
                 if ($result.Success) {
-                    Write-SuccessLine "PASS  $($result.Command)"
+                    Write-StatusBadge -Label 'PASS' -Tone 'good'
                 }
                 else {
-                    Write-WarningLine "FAIL  $($result.Command)"
+                    Write-StatusBadge -Label 'FAIL' -Tone 'warn'
                 }
+                Write-Host " $($result.Command)"
             }
         }
         else {
@@ -96,7 +101,7 @@ function Invoke-ToiCommand {
             Write-InfoLine 'No obvious next step.'
         }
         else {
-            $nextActions | Select-Object -Unique | ForEach-Object { Write-Host "- $_" }
+            $nextActions | Select-Object -Unique | ForEach-Object { Write-BulletLine $_ }
         }
     }
 }

@@ -5,6 +5,38 @@ function Write-Section {
     Write-Host "== $Text ==" -ForegroundColor Cyan
 }
 
+function Write-KeyValue {
+    param(
+        [string]$Key,
+        [string]$Value
+    )
+
+    Write-Host ($Key.PadRight(18) + $Value)
+}
+
+function Write-StatusBadge {
+    param(
+        [string]$Label,
+        [ValidateSet('good', 'warn', 'bad', 'neutral')]
+        [string]$Tone = 'neutral'
+    )
+
+    $color = switch ($Tone) {
+        'good' { 'Green' }
+        'warn' { 'Yellow' }
+        'bad' { 'Red' }
+        default { 'Gray' }
+    }
+
+    Write-Host "[$Label]" -ForegroundColor $color -NoNewline
+}
+
+function Write-BulletLine {
+    param([string]$Text)
+
+    Write-Host "- $Text"
+}
+
 function Write-InfoLine {
     param([string]$Text)
 

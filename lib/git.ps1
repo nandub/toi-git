@@ -1013,3 +1013,47 @@ function New-ReleaseNotesContent {
 
     return ($lines -join [Environment]::NewLine)
 }
+
+function Get-ToiWorkflowSnapshot {
+    $branch = Get-CurrentBranchName
+    $defaultBranch = Get-DefaultBranchName
+    $upstreamRef = Get-UpstreamRef
+    $published = Test-CurrentBranchPublished
+    $status = Get-StatusSummary
+    $note = Get-ToiBranchNote -BranchName $branch
+    $parent = Get-ToiStackParent -BranchName $branch
+    $validationSuite = Invoke-ToiValidationSuite
+    $protectedBranches = Get-ProtectedBranches
+    $commitConvention = Get-CommitConvention
+    $branchType = Get-CurrentBranchType
+
+    $upstreamTracking = $null
+    if ($upstreamRef) {
+        $upstreamTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $upstreamRef
+    }
+
+    $defaultTracking = $null
+    if ($branch -ne $defaultBranch) {
+        $defaultCompareRef = Get-DefaultBranchComparisonRef
+        if ($defaultCompareRef) {
+            $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultCompareRef
+        }
+    }
+
+    return [PSCustomObject]@{
+        Branch            = $branch
+        BranchType        = $branchType
+        DefaultBranch     = $defaultBranch
+        UpstreamRef       = $upstreamRef
+        Published         = $published
+        Status            = $status
+        Note              = $note
+        StackParent       = $parent
+        ValidationSuite   = $validationSuite
+        ProtectedBranches = $protectedBranches
+        CommitConvention  = $commitConvention
+        UpstreamTracking  = $upstreamTracking
+        DefaultTracking   = $defaultTracking
+        RequireBranchNote = (Test-BranchNoteRequired)
+    }
+}

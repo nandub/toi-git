@@ -30,6 +30,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - PR flow: `publish`, `open pr`, remote-aware `doctor`
 - Policy flow: configured quality gates can warn or block `ship` and `publish`
 - Daily view: `dashboard` and `next`
+- Terminal UX: `dashboard`, `next`, and `status` now share a compact cockpit-style view
 - Local memory: `note` stores branch intent in the local `.git` directory
 - Team structure: typed branch names, protected branch awareness, default branch policy
 - Advanced flow: stack branches, release branches, release notes/tags, hotfix branches, worktrees

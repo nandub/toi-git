@@ -116,7 +116,7 @@ If you just want a fast repo check:
 - `ship`: assess whether a branch is ready for push or PR
 - `publish`: push the current branch and print or open the PR path
 - `pr`: inspect the current pull request, checks, and ready state with `gh`
-- `pr`: inspect, ready, and merge the current pull request with `gh`
+- `pr`: inspect, gate, ready, and merge the current pull request with `gh`
 - `open`: open the repo, branch, compare view, or PR path in a browser or with `gh`
 - `note`: store a local branch note in `.git`
 
@@ -158,6 +158,7 @@ If you just want a fast repo check:
 
 ```powershell
 .\\toi.ps1 pr status
+.\\toi.ps1 pr gate
 .\\toi.ps1 pr checks
 .\\toi.ps1 pr ready -DryRun
 .\\toi.ps1 pr merge -DryRun
@@ -194,6 +195,7 @@ These commands support `-Json`:
 - `ship -Json`
 - `publish -Json`
 - `pr status -Json`
+- `pr gate -Json`
 - `pr checks -Json`
 - `pr ready -Json`
 - `pr merge -Json`
@@ -291,6 +293,7 @@ More examples:
 .\\toi.ps1 publish -DryRun
 .\\toi.ps1 publish -Pr
 .\\toi.ps1 pr status
+.\\toi.ps1 pr gate
 .\\toi.ps1 pr checks -Required
 .\\toi.ps1 pr ready
 .\\toi.ps1 pr ready -Undo

@@ -8,7 +8,7 @@ function Invoke-ToiCommand {
     }
 
     if ($Arguments.Count -eq 0) {
-        throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge> [args]'
+        throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge|gate> [args]'
     }
 
     $json = $Arguments -contains '-Json'
@@ -31,7 +31,7 @@ function Invoke-ToiCommand {
     $filteredArguments = @($Arguments | Where-Object { $_ -notin @('-Json', '-DryRun', '-Required', '-Undo', '-DeleteBranch', '-Auto', '-Admin', '-Merge', '-Rebase', '-Squash') })
 
     if ($filteredArguments.Count -eq 0) {
-        throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge> [args]'
+        throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge|gate> [args]'
     }
 
     $action = $filteredArguments[0].ToLowerInvariant()
@@ -157,8 +157,43 @@ function Invoke-ToiCommand {
 
             $result.Output | ForEach-Object { Write-Host $_ }
         }
+        'gate' {
+            $gate = Get-ToiPullRequestGateStatus
+
+            if ($json) {
+                Write-Json $gate
+                return
+            }
+
+            Write-Section 'PR Gate'
+            if ($gate.ready) {
+                Write-StatusBadge -Label 'READY' -Tone 'good'
+            }
+            else {
+                Write-StatusBadge -Label 'BLOCKED' -Tone 'bad'
+            }
+            Write-Host " $($gate.title)"
+            Write-KeyValue 'Branch' $gate.branch
+            Write-KeyValue 'URL' $gate.url
+            Write-KeyValue 'Draft' $gate.draft
+            Write-KeyValue 'Review' $gate.review_decision
+            Write-KeyValue 'Merge State' $gate.merge_state
+            Write-KeyValue 'Required Pass' $gate.checks.pass
+            Write-KeyValue 'Required Fail' $gate.checks.fail
+            Write-KeyValue 'Required Pending' $gate.checks.pending
+
+            if ($gate.blockers.Count -gt 0) {
+                Write-Section 'Blockers'
+                $gate.blockers | ForEach-Object { Write-BulletLine $_ }
+            }
+
+            if ($gate.warnings.Count -gt 0) {
+                Write-Section 'Warnings'
+                $gate.warnings | ForEach-Object { Write-BulletLine $_ }
+            }
+        }
         default {
-            throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge> [args]'
+            throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge|gate> [args]'
         }
     }
 }

@@ -802,6 +802,70 @@ function Merge-ToiPullRequest {
     }
 }
 
+function Get-ToiPullRequestGateStatus {
+    $pr = Get-ToiPullRequestInfo
+    $checks = @(Get-ToiPullRequestChecks -Required)
+    $summary = Get-ToiPullRequestChecksSummary -Checks $checks
+    $blockers = New-Object System.Collections.Generic.List[string]
+    $warnings = New-Object System.Collections.Generic.List[string]
+
+    if ($pr.state -ne 'OPEN') {
+        $blockers.Add("PR state is '$($pr.state)'.")
+    }
+
+    if ($pr.isDraft) {
+        $blockers.Add('PR is still a draft.')
+    }
+
+    if ($pr.reviewDecision -eq 'CHANGES_REQUESTED') {
+        $blockers.Add('Review decision is CHANGES_REQUESTED.')
+    }
+    elseif (-not $pr.reviewDecision) {
+        $warnings.Add('No review decision is currently available.')
+    }
+
+    if ($summary.fail -gt 0) {
+        $blockers.Add("There are $($summary.fail) failing required check(s).")
+    }
+
+    if ($summary.pending -gt 0) {
+        $blockers.Add("There are $($summary.pending) pending required check(s).")
+    }
+
+    switch ($pr.mergeStateStatus) {
+        'BLOCKED' { $blockers.Add('GitHub reports the PR as BLOCKED.') }
+        'DIRTY' { $blockers.Add('GitHub reports merge conflicts for this PR.') }
+        'BEHIND' { $blockers.Add('PR branch is behind the base branch.') }
+        'UNKNOWN' { $warnings.Add('GitHub merge state is UNKNOWN.') }
+        'UNSTABLE' { $warnings.Add('GitHub merge state is UNSTABLE.') }
+        default { }
+    }
+
+    if ($checks.Count -eq 0) {
+        $warnings.Add('No required checks were returned by GitHub.')
+    }
+
+    return [PSCustomObject]@{
+        ready = ($blockers.Count -eq 0)
+        branch = $pr.headRefName
+        title = $pr.title
+        url = $pr.url
+        draft = [bool]$pr.isDraft
+        state = $pr.state
+        review_decision = $pr.reviewDecision
+        merge_state = $pr.mergeStateStatus
+        checks = [PSCustomObject]@{
+            pass = $summary.pass
+            fail = $summary.fail
+            pending = $summary.pending
+            cancel = $summary.cancel
+            skipping = $summary.skipping
+        }
+        blockers = @($blockers)
+        warnings = @($warnings)
+    }
+}
+
 function Invoke-ToiValidationCommand {
     param(
         [Parameter(Mandatory = $true)]
@@ -1963,6 +2027,19 @@ function Get-ToiJsonCommandSchemas {
                 delete_branch = New-ToiSchemaField -Type 'boolean' -Description 'Whether the branch should be deleted after merge.'
                 command = $stringArray
                 output = $stringArray
+            })
+        pr_gate = (New-ToiObjectSchema -Description 'PR gate command JSON output.' -Required @('ready', 'branch', 'title', 'url', 'draft', 'state', 'review_decision', 'merge_state', 'checks', 'blockers', 'warnings') -Properties @{
+                ready = New-ToiSchemaField -Type 'boolean' -Description 'Whether the PR appears ready to merge.'
+                branch = New-ToiSchemaField -Type 'string' -Description 'Head branch name.'
+                title = New-ToiSchemaField -Type 'string' -Description 'Pull request title.'
+                url = New-ToiSchemaField -Type 'string' -Description 'Pull request URL.'
+                draft = New-ToiSchemaField -Type 'boolean' -Description 'Whether the PR is still a draft.'
+                state = New-ToiSchemaField -Type 'string' -Description 'Pull request state.'
+                review_decision = New-ToiSchemaField -Type 'string|null' -Description 'GitHub review decision.'
+                merge_state = New-ToiSchemaField -Type 'string|null' -Description 'GitHub merge state.'
+                checks = $prChecksSummarySchema
+                blockers = $stringArray
+                warnings = $stringArray
             })
         self_check = (New-ToiObjectSchema -Description 'Self-check command JSON output.' -Required @('checks', 'summary') -Properties @{
                 checks = (New-ToiArraySchema -Description 'Per-check results.' -Items $selfCheckResultSchema)

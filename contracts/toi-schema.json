@@ -616,6 +616,99 @@
                                                     ],
                                        "type":  "object"
                                    },
+                     "pr_gate":  {
+                                     "description":  "PR gate command JSON output.",
+                                     "properties":  {
+                                                        "blockers":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
+                                                        "branch":  {
+                                                                       "description":  "Head branch name.",
+                                                                       "type":  "string"
+                                                                   },
+                                                        "checks":  {
+                                                                       "description":  "Summary of PR checks by bucket.",
+                                                                       "properties":  {
+                                                                                          "cancel":  {
+                                                                                                         "type":  "number"
+                                                                                                     },
+                                                                                          "fail":  {
+                                                                                                       "type":  "number"
+                                                                                                   },
+                                                                                          "pass":  {
+                                                                                                       "type":  "number"
+                                                                                                   },
+                                                                                          "pending":  {
+                                                                                                          "type":  "number"
+                                                                                                      },
+                                                                                          "skipping":  {
+                                                                                                           "type":  "number"
+                                                                                                       }
+                                                                                      },
+                                                                       "required":  [
+                                                                                        "pass",
+                                                                                        "fail",
+                                                                                        "pending",
+                                                                                        "cancel",
+                                                                                        "skipping"
+                                                                                    ],
+                                                                       "type":  "object"
+                                                                   },
+                                                        "draft":  {
+                                                                      "description":  "Whether the PR is still a draft.",
+                                                                      "type":  "boolean"
+                                                                  },
+                                                        "merge_state":  {
+                                                                            "description":  "GitHub merge state.",
+                                                                            "type":  "string|null"
+                                                                        },
+                                                        "ready":  {
+                                                                      "description":  "Whether the PR appears ready to merge.",
+                                                                      "type":  "boolean"
+                                                                  },
+                                                        "review_decision":  {
+                                                                                "description":  "GitHub review decision.",
+                                                                                "type":  "string|null"
+                                                                            },
+                                                        "state":  {
+                                                                      "description":  "Pull request state.",
+                                                                      "type":  "string"
+                                                                  },
+                                                        "title":  {
+                                                                      "description":  "Pull request title.",
+                                                                      "type":  "string"
+                                                                  },
+                                                        "url":  {
+                                                                    "description":  "Pull request URL.",
+                                                                    "type":  "string"
+                                                                },
+                                                        "warnings":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     }
+                                                    },
+                                     "required":  [
+                                                      "ready",
+                                                      "branch",
+                                                      "title",
+                                                      "url",
+                                                      "draft",
+                                                      "state",
+                                                      "review_decision",
+                                                      "merge_state",
+                                                      "checks",
+                                                      "blockers",
+                                                      "warnings"
+                                                  ],
+                                     "type":  "object"
+                                 },
                      "pr_merge":  {
                                       "description":  "PR merge command JSON output.",
                                       "properties":  {

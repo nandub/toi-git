@@ -1,9 +1,16 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$Json
+)
 
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-powershell -ExecutionPolicy Bypass -File .\toi.ps1 self-check
+if ($Json) {
+    powershell -ExecutionPolicy Bypass -File .\toi.ps1 self-check -Json
+}
+else {
+    powershell -ExecutionPolicy Bypass -File .\toi.ps1 self-check
+}

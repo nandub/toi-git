@@ -691,6 +691,72 @@ function Publish-ToiGitHubRelease {
     }
 }
 
+function Get-ToiPullRequestInfo {
+    $fields = 'number,title,url,state,isDraft,reviewDecision,mergeStateStatus,headRefName,baseRefName'
+    $result = Invoke-GitHubCli -Arguments @('pr', 'view', '--json', $fields)
+    $jsonText = ($result.Output -join [Environment]::NewLine)
+    return ($jsonText | ConvertFrom-Json)
+}
+
+function Get-ToiPullRequestChecks {
+    param([switch]$Required)
+
+    $arguments = @('pr', 'checks', '--json', 'bucket,completedAt,description,event,link,name,startedAt,state,workflow')
+    if ($Required) {
+        $arguments += '--required'
+    }
+
+    $result = Invoke-GitHubCli -Arguments $arguments
+    $jsonText = ($result.Output -join [Environment]::NewLine)
+    $parsed = $jsonText | ConvertFrom-Json
+
+    if ($parsed -is [System.Array]) {
+        return @($parsed)
+    }
+
+    return @($parsed)
+}
+
+function Get-ToiPullRequestChecksSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Checks
+    )
+
+    return [PSCustomObject]@{
+        pass = @($Checks | Where-Object { $_.bucket -eq 'pass' }).Count
+        fail = @($Checks | Where-Object { $_.bucket -eq 'fail' }).Count
+        pending = @($Checks | Where-Object { $_.bucket -eq 'pending' }).Count
+        cancel = @($Checks | Where-Object { $_.bucket -eq 'cancel' }).Count
+        skipping = @($Checks | Where-Object { $_.bucket -eq 'skipping' }).Count
+    }
+}
+
+function Set-ToiPullRequestReady {
+    param(
+        [switch]$Undo,
+        [switch]$DryRun
+    )
+
+    $arguments = @('pr', 'ready')
+    if ($Undo) {
+        $arguments += '--undo'
+    }
+
+    if ($DryRun) {
+        return [PSCustomObject]@{
+            Command = @($arguments)
+            Output = @()
+        }
+    }
+
+    $result = Invoke-GitHubCli -Arguments $arguments
+    return [PSCustomObject]@{
+        Command = @($arguments)
+        Output = @($result.Output)
+    }
+}
+
 function Invoke-ToiValidationCommand {
     param(
         [Parameter(Mandatory = $true)]
@@ -1729,6 +1795,24 @@ function Get-ToiJsonCommandSchemas {
         policy = $policySchema
         contract = $contractSchema
     }
+    $prCheckSchema = New-ToiObjectSchema -Description 'Single pull request check result.' -Required @('bucket', 'name', 'state', 'workflow') -Properties @{
+        bucket = New-ToiSchemaField -Type 'string' -Description 'Check status bucket.'
+        name = New-ToiSchemaField -Type 'string' -Description 'Check name.'
+        state = New-ToiSchemaField -Type 'string|null' -Description 'Raw GitHub check state.'
+        workflow = New-ToiSchemaField -Type 'string|null' -Description 'Workflow name, if available.'
+        link = New-ToiSchemaField -Type 'string|null' -Description 'Web URL for the check.'
+        description = New-ToiSchemaField -Type 'string|null' -Description 'Check description.'
+        event = New-ToiSchemaField -Type 'string|null' -Description 'Triggering event.'
+        startedAt = New-ToiSchemaField -Type 'string|null' -Description 'Start timestamp.'
+        completedAt = New-ToiSchemaField -Type 'string|null' -Description 'Completion timestamp.'
+    }
+    $prChecksSummarySchema = New-ToiObjectSchema -Description 'Summary of PR checks by bucket.' -Required @('pass', 'fail', 'pending', 'cancel', 'skipping') -Properties @{
+        pass = $numberField
+        fail = $numberField
+        pending = $numberField
+        cancel = $numberField
+        skipping = $numberField
+    }
 
     return [PSCustomObject]@{
         status = (New-ToiObjectSchema -Description 'Status command JSON output.' -Required @('branch', 'published', 'upstream', 'branch_line', 'staged', 'unstaged', 'untracked') -Properties @{
@@ -1801,6 +1885,30 @@ function Get-ToiJsonCommandSchemas {
                 }
             }
         }
+        pr = (New-ToiObjectSchema -Description 'PR status command JSON output.' -Required @('number', 'title', 'url', 'state', 'isDraft', 'reviewDecision', 'mergeStateStatus', 'headRefName', 'baseRefName') -Properties @{
+                number = New-ToiSchemaField -Type 'number' -Description 'Pull request number.'
+                title = New-ToiSchemaField -Type 'string' -Description 'Pull request title.'
+                url = New-ToiSchemaField -Type 'string' -Description 'Pull request URL.'
+                state = New-ToiSchemaField -Type 'string' -Description 'Pull request state.'
+                isDraft = New-ToiSchemaField -Type 'boolean' -Description 'Whether the pull request is a draft.'
+                reviewDecision = New-ToiSchemaField -Type 'string|null' -Description 'GitHub review decision.'
+                mergeStateStatus = New-ToiSchemaField -Type 'string|null' -Description 'GitHub merge state status.'
+                headRefName = New-ToiSchemaField -Type 'string' -Description 'Head branch name.'
+                baseRefName = New-ToiSchemaField -Type 'string' -Description 'Base branch name.'
+            })
+        pr_checks = (New-ToiObjectSchema -Description 'PR checks command JSON output.' -Required @('branch', 'required', 'summary', 'checks') -Properties @{
+                branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
+                required = New-ToiSchemaField -Type 'boolean' -Description 'Whether only required checks were requested.'
+                summary = $prChecksSummarySchema
+                checks = (New-ToiArraySchema -Description 'Array of PR checks.' -Items $prCheckSchema)
+            })
+        pr_ready = (New-ToiObjectSchema -Description 'PR ready command JSON output.' -Required @('branch', 'dry_run', 'undo', 'command', 'output') -Properties @{
+                branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
+                dry_run = New-ToiSchemaField -Type 'boolean' -Description 'Whether the ready command was a dry run.'
+                undo = New-ToiSchemaField -Type 'boolean' -Description 'Whether the command would mark the PR as draft.'
+                command = $stringArray
+                output = $stringArray
+            })
         self_check = (New-ToiObjectSchema -Description 'Self-check command JSON output.' -Required @('checks', 'summary') -Properties @{
                 checks = (New-ToiArraySchema -Description 'Per-check results.' -Items $selfCheckResultSchema)
                 summary = $selfCheckSummarySchema

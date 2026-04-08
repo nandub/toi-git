@@ -115,6 +115,7 @@ If you just want a fast repo check:
 - `doctor`: inspect repo state and suggest next actions
 - `ship`: assess whether a branch is ready for push or PR
 - `publish`: push the current branch and print or open the PR path
+- `pr`: inspect the current pull request, checks, and ready state with `gh`
 - `open`: open the repo, branch, compare view, or PR path in a browser or with `gh`
 - `note`: store a local branch note in `.git`
 
@@ -152,6 +153,14 @@ If you just want a fast repo check:
 .\\toi.ps1 open pr
 ```
 
+### Inspect PR Health
+
+```powershell
+.\\toi.ps1 pr status
+.\\toi.ps1 pr checks
+.\\toi.ps1 pr ready -DryRun
+```
+
 ### Cut A Release
 
 ```powershell
@@ -182,6 +191,9 @@ These commands support `-Json`:
 - `doctor -Json`
 - `ship -Json`
 - `publish -Json`
+- `pr status -Json`
+- `pr checks -Json`
+- `pr ready -Json`
 - `release ... -Json`
 - `self-check -Json`
 - `report -Json`
@@ -275,6 +287,10 @@ More examples:
 ```powershell
 .\\toi.ps1 publish -DryRun
 .\\toi.ps1 publish -Pr
+.\\toi.ps1 pr status
+.\\toi.ps1 pr checks -Required
+.\\toi.ps1 pr ready
+.\\toi.ps1 pr ready -Undo
 .\\toi.ps1 dashboard
 .\\toi.ps1 next
 .\\toi.ps1 branch-clean

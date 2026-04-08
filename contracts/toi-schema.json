@@ -463,6 +463,198 @@
                                                ],
                                   "type":  "object"
                               },
+                     "pr":  {
+                                "description":  "PR status command JSON output.",
+                                "properties":  {
+                                                   "baseRefName":  {
+                                                                       "description":  "Base branch name.",
+                                                                       "type":  "string"
+                                                                   },
+                                                   "headRefName":  {
+                                                                       "description":  "Head branch name.",
+                                                                       "type":  "string"
+                                                                   },
+                                                   "isDraft":  {
+                                                                   "description":  "Whether the pull request is a draft.",
+                                                                   "type":  "boolean"
+                                                               },
+                                                   "mergeStateStatus":  {
+                                                                            "description":  "GitHub merge state status.",
+                                                                            "type":  "string|null"
+                                                                        },
+                                                   "number":  {
+                                                                  "description":  "Pull request number.",
+                                                                  "type":  "number"
+                                                              },
+                                                   "reviewDecision":  {
+                                                                          "description":  "GitHub review decision.",
+                                                                          "type":  "string|null"
+                                                                      },
+                                                   "state":  {
+                                                                 "description":  "Pull request state.",
+                                                                 "type":  "string"
+                                                             },
+                                                   "title":  {
+                                                                 "description":  "Pull request title.",
+                                                                 "type":  "string"
+                                                             },
+                                                   "url":  {
+                                                               "description":  "Pull request URL.",
+                                                               "type":  "string"
+                                                           }
+                                               },
+                                "required":  [
+                                                 "number",
+                                                 "title",
+                                                 "url",
+                                                 "state",
+                                                 "isDraft",
+                                                 "reviewDecision",
+                                                 "mergeStateStatus",
+                                                 "headRefName",
+                                                 "baseRefName"
+                                             ],
+                                "type":  "object"
+                            },
+                     "pr_checks":  {
+                                       "description":  "PR checks command JSON output.",
+                                       "properties":  {
+                                                          "branch":  {
+                                                                         "description":  "Current branch name.",
+                                                                         "type":  "string"
+                                                                     },
+                                                          "checks":  {
+                                                                         "description":  "Array of PR checks.",
+                                                                         "items":  {
+                                                                                       "description":  "Single pull request check result.",
+                                                                                       "properties":  {
+                                                                                                          "bucket":  {
+                                                                                                                         "description":  "Check status bucket.",
+                                                                                                                         "type":  "string"
+                                                                                                                     },
+                                                                                                          "completedAt":  {
+                                                                                                                              "description":  "Completion timestamp.",
+                                                                                                                              "type":  "string|null"
+                                                                                                                          },
+                                                                                                          "description":  {
+                                                                                                                              "description":  "Check description.",
+                                                                                                                              "type":  "string|null"
+                                                                                                                          },
+                                                                                                          "event":  {
+                                                                                                                        "description":  "Triggering event.",
+                                                                                                                        "type":  "string|null"
+                                                                                                                    },
+                                                                                                          "link":  {
+                                                                                                                       "description":  "Web URL for the check.",
+                                                                                                                       "type":  "string|null"
+                                                                                                                   },
+                                                                                                          "name":  {
+                                                                                                                       "description":  "Check name.",
+                                                                                                                       "type":  "string"
+                                                                                                                   },
+                                                                                                          "startedAt":  {
+                                                                                                                            "description":  "Start timestamp.",
+                                                                                                                            "type":  "string|null"
+                                                                                                                        },
+                                                                                                          "state":  {
+                                                                                                                        "description":  "Raw GitHub check state.",
+                                                                                                                        "type":  "string|null"
+                                                                                                                    },
+                                                                                                          "workflow":  {
+                                                                                                                           "description":  "Workflow name, if available.",
+                                                                                                                           "type":  "string|null"
+                                                                                                                       }
+                                                                                                      },
+                                                                                       "required":  [
+                                                                                                        "bucket",
+                                                                                                        "name",
+                                                                                                        "state",
+                                                                                                        "workflow"
+                                                                                                    ],
+                                                                                       "type":  "object"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
+                                                          "required":  {
+                                                                           "description":  "Whether only required checks were requested.",
+                                                                           "type":  "boolean"
+                                                                       },
+                                                          "summary":  {
+                                                                          "description":  "Summary of PR checks by bucket.",
+                                                                          "properties":  {
+                                                                                             "cancel":  {
+                                                                                                            "type":  "number"
+                                                                                                        },
+                                                                                             "fail":  {
+                                                                                                          "type":  "number"
+                                                                                                      },
+                                                                                             "pass":  {
+                                                                                                          "type":  "number"
+                                                                                                      },
+                                                                                             "pending":  {
+                                                                                                             "type":  "number"
+                                                                                                         },
+                                                                                             "skipping":  {
+                                                                                                              "type":  "number"
+                                                                                                          }
+                                                                                         },
+                                                                          "required":  [
+                                                                                           "pass",
+                                                                                           "fail",
+                                                                                           "pending",
+                                                                                           "cancel",
+                                                                                           "skipping"
+                                                                                       ],
+                                                                          "type":  "object"
+                                                                      }
+                                                      },
+                                       "required":  [
+                                                        "branch",
+                                                        "required",
+                                                        "summary",
+                                                        "checks"
+                                                    ],
+                                       "type":  "object"
+                                   },
+                     "pr_ready":  {
+                                      "description":  "PR ready command JSON output.",
+                                      "properties":  {
+                                                         "branch":  {
+                                                                        "description":  "Current branch name.",
+                                                                        "type":  "string"
+                                                                    },
+                                                         "command":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
+                                                         "dry_run":  {
+                                                                         "description":  "Whether the ready command was a dry run.",
+                                                                         "type":  "boolean"
+                                                                     },
+                                                         "output":  {
+                                                                        "description":  "Array of strings.",
+                                                                        "items":  {
+                                                                                      "type":  "string"
+                                                                                  },
+                                                                        "type":  "array"
+                                                                    },
+                                                         "undo":  {
+                                                                      "description":  "Whether the command would mark the PR as draft.",
+                                                                      "type":  "boolean"
+                                                                  }
+                                                     },
+                                      "required":  [
+                                                       "branch",
+                                                       "dry_run",
+                                                       "undo",
+                                                       "command",
+                                                       "output"
+                                                   ],
+                                      "type":  "object"
+                                  },
                      "publish":  {
                                      "blocked_shape":  {
                                                            "properties":  {

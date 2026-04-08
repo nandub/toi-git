@@ -174,7 +174,8 @@ function Invoke-ToiCommand {
         @{ Name = 'Dashboard'; Args = @('dashboard'); TimeoutSeconds = 20 },
         @{ Name = 'Install';   Args = @('install', 'profile', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Install Status'; Args = @('install', 'status'); TimeoutSeconds = 15 },
-        @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 }
+        @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 },
+        @{ Name = 'PR Ready'; Args = @('pr', 'ready', '-DryRun'); TimeoutSeconds = 15 }
     )
 
     foreach ($commandCheck in $commandChecks) {

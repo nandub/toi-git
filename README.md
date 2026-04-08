@@ -178,6 +178,12 @@ If you just want a fast repo check:
 
 If `gh.exe` is installed, `release publish` uses `gh release create` with your generated notes file.
 
+To refresh `CHANGELOG.md` from the current repo state before any release tag exists:
+
+```powershell
+.\\toi.ps1 release notes current-state
+```
+
 ### Inspect Repo State In CI Or Scripts
 
 ```powershell

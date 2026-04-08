@@ -184,6 +184,17 @@ function Invoke-ToiCommand {
         Add-CheckResult -Name $commandCheck.Name -Success $result.Success -Detail $result.Detail
     }
 
+    $reportResult = Invoke-CommandCheck -Name 'Report Output' -CommandArgs @('report') -TimeoutSeconds 20
+    if (-not $reportResult.Success) {
+        Add-CheckResult -Name 'Report Output' -Success $false -Detail $reportResult.Detail
+    }
+    elseif (-not $reportResult.Stdout.Trim()) {
+        Add-CheckResult -Name 'Report Output' -Success $false -Detail 'Report command produced no pipeline output.'
+    }
+    else {
+        Add-CheckResult -Name 'Report Output' -Success $true -Detail 'Report command produced markdown output.'
+    }
+
     $jsonChecks = @(
         @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published'); SchemaKey = 'status' },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },

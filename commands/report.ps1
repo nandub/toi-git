@@ -12,5 +12,5 @@ function Invoke-ToiCommand {
     }
 
     $markdown = Convert-ToiReportToMarkdown -Report $report
-    Write-Host $markdown
+    Write-Output $markdown
 }

@@ -4,7 +4,7 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     if ($Arguments.Count -lt 2) {
-        throw 'Usage: toi start <type> <name>'
+        throw 'Usage: .\\toi.ps1 start <type> <name>'
     }
 
     $type = $Arguments[0].ToLowerInvariant()

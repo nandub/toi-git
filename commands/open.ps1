@@ -39,7 +39,7 @@ function Invoke-ToiCommand {
             $finalUrl = Get-PullRequestBrowseUrl -RepositoryUrl $browseUrl -BaseBranch $defaultBranch -HeadBranch $currentBranch
         }
         default {
-            throw 'Usage: toi open [repo|branch|compare|pr]'
+            throw 'Usage: .\\toi.ps1 open [repo|branch|compare|pr]'
         }
     }
 

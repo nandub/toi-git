@@ -2,18 +2,18 @@
 
 TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visible, adds typed branch workflows, and gives you practical guidance for daily branch, review, release, and automation work.
 
-The examples below use `toi ...`, which is provided by the repo-local [toi.cmd](C:\Users\ferna\development\code\powershell\Codex\Toi\toi.cmd) launcher. Add the repo root to your `PATH` to use that form directly from PowerShell; otherwise keep using [toi.ps1](C:\Users\ferna\development\code\powershell\Codex\Toi\toi.ps1).
+The examples below use `.\toi.ps1 ...`, which works in PowerShell when this repo is on your `PATH` or when you run it from the repo root. The repo-local [toi.cmd](C:\Users\ferna\development\code\powershell\Codex\Toi\toi.cmd) launcher is kept for bare `toi ...` usage and for `cmd.exe`.
 
 ## Start Here
 
 The shortest useful flow looks like this:
 
 ```powershell
-toi start feature login-form
-toi status
-toi ship
-toi publish
-toi open pr
+.\\toi.ps1 start feature login-form
+.\\toi.ps1 status
+.\\toi.ps1 ship
+.\\toi.ps1 publish
+.\\toi.ps1 open pr
 ```
 
 That covers the core TOI path:
@@ -29,27 +29,27 @@ That covers the core TOI path:
 Run TOI Git from inside a Git repository.
 
 ```powershell
-toi status
-toi dashboard
-toi next
+.\\toi.ps1 status
+.\\toi.ps1 dashboard
+.\\toi.ps1 next
 ```
 
 If you are starting new work:
 
 ```powershell
-toi start feature login-form
-toi note set "Prepare login form PR"
-toi save
-toi ship
-toi publish
+.\\toi.ps1 start feature login-form
+.\\toi.ps1 note set "Prepare login form PR"
+.\\toi.ps1 save
+.\\toi.ps1 ship
+.\\toi.ps1 publish
 ```
 
 If you just want a fast repo check:
 
 ```powershell
-toi doctor
-toi report
-toi self-check
+.\\toi.ps1 doctor
+.\\toi.ps1 report
+.\\toi.ps1 self-check
 ```
 
 ## Command Groups
@@ -93,34 +93,34 @@ toi self-check
 ### Start A Feature
 
 ```powershell
-toi start feature login-form
-toi note set "Prepare login form PR"
-toi status
+.\\toi.ps1 start feature login-form
+.\\toi.ps1 note set "Prepare login form PR"
+.\\toi.ps1 status
 ```
 
 ### Publish A Branch
 
 ```powershell
-toi ship
-toi publish
-toi open pr
+.\\toi.ps1 ship
+.\\toi.ps1 publish
+.\\toi.ps1 open pr
 ```
 
 ### Cut A Release
 
 ```powershell
-toi release start 1.4.0
-toi release notes 1.4.0
-toi release tag 1.4.0
+.\\toi.ps1 release start 1.4.0
+.\\toi.ps1 release notes 1.4.0
+.\\toi.ps1 release tag 1.4.0
 ```
 
 ### Inspect Repo State In CI Or Scripts
 
 ```powershell
-toi status -Json
-toi report -Json
-toi schema -Json
-toi self-check -Json
+.\\toi.ps1 status -Json
+.\\toi.ps1 report -Json
+.\\toi.ps1 schema -Json
+.\\toi.ps1 self-check -Json
 ```
 
 ## Automation And Contracts
@@ -224,22 +224,22 @@ Example with blocking validation:
 More examples:
 
 ```powershell
-toi publish -DryRun
-toi publish -Pr
-toi dashboard
-toi next
-toi branch-clean
-toi branch-clean -Apply
-toi undo -Soft
-toi open
-toi open branch
-toi open compare
-toi worktree list
-toi worktree add ..\Toi-feature feature/demo
-toi stack new api-client
-toi stack restack
-toi stack parent
-toi hotfix start payment-timeout
+.\\toi.ps1 publish -DryRun
+.\\toi.ps1 publish -Pr
+.\\toi.ps1 dashboard
+.\\toi.ps1 next
+.\\toi.ps1 branch-clean
+.\\toi.ps1 branch-clean -Apply
+.\\toi.ps1 undo -Soft
+.\\toi.ps1 open
+.\\toi.ps1 open branch
+.\\toi.ps1 open compare
+.\\toi.ps1 worktree list
+.\\toi.ps1 worktree add ..\Toi-feature feature/demo
+.\\toi.ps1 stack new api-client
+.\\toi.ps1 stack restack
+.\\toi.ps1 stack parent
+.\\toi.ps1 hotfix start payment-timeout
 ```
 
 TOI Git stores stack parent metadata and branch notes under the local `.git` directory so this workflow state does not pollute tracked files.

@@ -12,7 +12,7 @@ function Invoke-ToiCommand {
     switch ($action) {
         'new' {
             if ($Arguments.Count -lt 2) {
-                throw 'Usage: toi stack new <name> [type]'
+                throw 'Usage: .\\toi.ps1 stack new <name> [type]'
             }
 
             $name = $Arguments[1]
@@ -90,7 +90,7 @@ function Invoke-ToiCommand {
             }
         }
         default {
-            throw 'Usage: toi stack <new|restack|list|parent> [args]'
+            throw 'Usage: .\\toi.ps1 stack <new|restack|list|parent> [args]'
         }
     }
 }

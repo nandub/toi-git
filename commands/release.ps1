@@ -11,7 +11,7 @@ function Invoke-ToiCommand {
     }
 
     if ($filteredArguments.Count -lt 2) {
-        throw 'Usage: toi release <start|notes|tag> <version>'
+        throw 'Usage: .\\toi.ps1 release <start|notes|tag> <version>'
     }
 
     $action = $filteredArguments[0].ToLowerInvariant()
@@ -109,7 +109,7 @@ function Invoke-ToiCommand {
             $result.Output | ForEach-Object { Write-Host $_ }
         }
         default {
-            throw 'Usage: toi release <start|notes|tag> <version>'
+            throw 'Usage: .\\toi.ps1 release <start|notes|tag> <version>'
         }
     }
 }

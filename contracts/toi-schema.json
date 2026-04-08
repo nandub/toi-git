@@ -27,7 +27,7 @@
                                                                                                               "type":  "boolean"
                                                                                                           },
                                                                                             "type":  {
-                                                                                                         "description":  "Detected TOI branch type.",
+                                                                                                         "description":  "Detected .\\\\toi.ps1 branch type.",
                                                                                                          "type":  "string|null"
                                                                                                      }
                                                                                         },
@@ -242,7 +242,7 @@
                                                                                                            "type":  "boolean"
                                                                                                        },
                                                                                          "type":  {
-                                                                                                      "description":  "Detected TOI branch type.",
+                                                                                                      "description":  "Detected .\\\\toi.ps1 branch type.",
                                                                                                       "type":  "string|null"
                                                                                                   }
                                                                                      },
@@ -678,7 +678,7 @@
                                                                                                                                                "type":  "boolean"
                                                                                                                                            },
                                                                                                                              "type":  {
-                                                                                                                                          "description":  "Detected TOI branch type.",
+                                                                                                                                          "description":  "Detected .\\\\toi.ps1 branch type.",
                                                                                                                                           "type":  "string|null"
                                                                                                                                       }
                                                                                                                          },
@@ -950,7 +950,7 @@
                                                                                                          "type":  "boolean"
                                                                                                      },
                                                                                        "type":  {
-                                                                                                    "description":  "Detected TOI branch type.",
+                                                                                                    "description":  "Detected .\\\\toi.ps1 branch type.",
                                                                                                     "type":  "string|null"
                                                                                                 }
                                                                                    },
@@ -1223,3 +1223,4 @@
                  },
     "contract_version":  "1.0.0"
 }
+

@@ -4,7 +4,7 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     if ($Arguments.Count -lt 2 -or $Arguments[0].ToLowerInvariant() -ne 'start') {
-        throw 'Usage: toi hotfix start <name>'
+        throw 'Usage: .\\toi.ps1 hotfix start <name>'
     }
 
     $name = ($Arguments | Select-Object -Skip 1) -join ' '

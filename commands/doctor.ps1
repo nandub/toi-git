@@ -62,7 +62,7 @@ function Invoke-ToiCommand {
     Write-Section 'Next Actions'
     if ($recommendations.Count -eq 0) {
         Write-SuccessLine 'No obvious workflow issues detected.'
-        Write-InfoLine 'Likely next step: `toi ship`'
+        Write-InfoLine 'Likely next step: `.\\toi.ps1 ship`'
         return
     }
 

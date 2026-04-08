@@ -769,6 +769,38 @@ function Get-ToiPullRequestLatestReviewSummary {
     }
 }
 
+function Get-ToiPullRequestLatestReviewDetails {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$PullRequest
+    )
+
+    $items = New-Object System.Collections.Generic.List[object]
+
+    foreach ($review in @($PullRequest.latestReviews)) {
+        $reviewer = $null
+        if ($review.author) {
+            if ($review.author.login) {
+                $reviewer = "@$($review.author.login)"
+            }
+            elseif ($review.author.name) {
+                $reviewer = [string]$review.author.name
+            }
+        }
+
+        if (-not $reviewer) {
+            $reviewer = 'unknown'
+        }
+
+        $items.Add([PSCustomObject]@{
+            reviewer = $reviewer
+            state = [string]$review.state
+        })
+    }
+
+    return @($items)
+}
+
 function Get-ToiPullRequestChecks {
     param([switch]$Required)
 
@@ -983,6 +1015,32 @@ function Get-ToiPullRequestGateStatus {
         recommended_command = $recommendedCommand
         blockers = @($blockers)
         warnings = @($warnings)
+    }
+}
+
+function Get-ToiPullRequestReviewSummary {
+    $pr = Get-ToiPullRequestInfo
+    $gate = Get-ToiPullRequestGateStatus
+    $reviewSummary = Get-ToiPullRequestLatestReviewSummary -PullRequest $pr
+    $latestReviews = Get-ToiPullRequestLatestReviewDetails -PullRequest $pr
+
+    return [PSCustomObject]@{
+        title = $pr.title
+        branch = $pr.headRefName
+        url = $pr.url
+        review_decision = $pr.reviewDecision
+        requested_reviewers = @($gate.requested_reviewers)
+        reviews = [PSCustomObject]@{
+            approved = $reviewSummary.approved
+            changes_requested = $reviewSummary.changes_requested
+            commented = $reviewSummary.commented
+        }
+        latest_reviews = @($latestReviews)
+        ready = $gate.ready
+        recommended_action = $gate.recommended_action
+        recommended_command = $gate.recommended_command
+        blockers = @($gate.blockers)
+        warnings = @($gate.warnings)
     }
 }
 
@@ -2183,6 +2241,23 @@ function Get-ToiJsonCommandSchemas {
                 requested_reviewers = $stringArray
                 reviews = $prReviewSummarySchema
                 checks = $prChecksSummarySchema
+                recommended_action = New-ToiSchemaField -Type 'string' -Description 'Suggested next step for the PR.'
+                recommended_command = New-ToiSchemaField -Type 'string' -Description 'Suggested TOI command for the next step.'
+                blockers = $stringArray
+                warnings = $stringArray
+            })
+        review = (New-ToiObjectSchema -Description 'Review command JSON output.' -Required @('title', 'branch', 'url', 'review_decision', 'requested_reviewers', 'reviews', 'latest_reviews', 'ready', 'recommended_action', 'recommended_command', 'blockers', 'warnings') -Properties @{
+                title = New-ToiSchemaField -Type 'string' -Description 'Pull request title.'
+                branch = New-ToiSchemaField -Type 'string' -Description 'Head branch name.'
+                url = New-ToiSchemaField -Type 'string' -Description 'Pull request URL.'
+                review_decision = New-ToiSchemaField -Type 'string|null' -Description 'GitHub review decision.'
+                requested_reviewers = $stringArray
+                reviews = $prReviewSummarySchema
+                latest_reviews = (New-ToiArraySchema -Description 'Latest review details.' -Items (New-ToiObjectSchema -Description 'Latest review item.' -Required @('reviewer', 'state') -Properties @{
+                            reviewer = New-ToiSchemaField -Type 'string' -Description 'Reviewer display name.'
+                            state = New-ToiSchemaField -Type 'string|null' -Description 'Latest review state.'
+                        }))
+                ready = New-ToiSchemaField -Type 'boolean' -Description 'Whether the PR appears ready to merge.'
                 recommended_action = New-ToiSchemaField -Type 'string' -Description 'Suggested next step for the PR.'
                 recommended_command = New-ToiSchemaField -Type 'string' -Description 'Suggested TOI command for the next step.'
                 blockers = $stringArray

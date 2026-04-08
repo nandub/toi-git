@@ -117,6 +117,7 @@ If you just want a fast repo check:
 - `publish`: push the current branch and print or open the PR path
 - `pr`: inspect the current pull request, checks, and ready state with `gh`
 - `pr`: inspect, gate, ready, and merge the current pull request with `gh`
+- `review`: summarize review pressure, requested reviewers, and next action
 - `open`: open the repo, branch, compare view, or PR path in a browser or with `gh`
 - `note`: store a local branch note in `.git`
 
@@ -160,6 +161,7 @@ If you just want a fast repo check:
 .\\toi.ps1 pr status
 .\\toi.ps1 pr gate
 .\\toi.ps1 pr checks
+.\\toi.ps1 review
 .\\toi.ps1 pr ready -DryRun
 .\\toi.ps1 pr merge -DryRun
 ```
@@ -201,6 +203,7 @@ These commands support `-Json`:
 - `pr checks -Json`
 - `pr ready -Json`
 - `pr merge -Json`
+- `review -Json`
 - `release ... -Json`
 - `self-check -Json`
 - `report -Json`
@@ -297,6 +300,7 @@ More examples:
 .\\toi.ps1 pr status
 .\\toi.ps1 pr gate
 .\\toi.ps1 pr checks -Required
+.\\toi.ps1 review
 .\\toi.ps1 pr ready
 .\\toi.ps1 pr ready -Undo
 .\\toi.ps1 pr merge -Squash -DeleteBranch

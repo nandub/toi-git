@@ -1268,6 +1268,117 @@
                                                  ],
                                     "type":  "object"
                                 },
+                     "review":  {
+                                    "description":  "Review command JSON output.",
+                                    "properties":  {
+                                                       "blockers":  {
+                                                                        "description":  "Array of strings.",
+                                                                        "items":  {
+                                                                                      "type":  "string"
+                                                                                  },
+                                                                        "type":  "array"
+                                                                    },
+                                                       "branch":  {
+                                                                      "description":  "Head branch name.",
+                                                                      "type":  "string"
+                                                                  },
+                                                       "latest_reviews":  {
+                                                                              "description":  "Latest review details.",
+                                                                              "items":  {
+                                                                                            "description":  "Latest review item.",
+                                                                                            "properties":  {
+                                                                                                               "reviewer":  {
+                                                                                                                                "description":  "Reviewer display name.",
+                                                                                                                                "type":  "string"
+                                                                                                                            },
+                                                                                                               "state":  {
+                                                                                                                             "description":  "Latest review state.",
+                                                                                                                             "type":  "string|null"
+                                                                                                                         }
+                                                                                                           },
+                                                                                            "required":  [
+                                                                                                             "reviewer",
+                                                                                                             "state"
+                                                                                                         ],
+                                                                                            "type":  "object"
+                                                                                        },
+                                                                              "type":  "array"
+                                                                          },
+                                                       "ready":  {
+                                                                     "description":  "Whether the PR appears ready to merge.",
+                                                                     "type":  "boolean"
+                                                                 },
+                                                       "recommended_action":  {
+                                                                                  "description":  "Suggested next step for the PR.",
+                                                                                  "type":  "string"
+                                                                              },
+                                                       "recommended_command":  {
+                                                                                   "description":  "Suggested TOI command for the next step.",
+                                                                                   "type":  "string"
+                                                                               },
+                                                       "requested_reviewers":  {
+                                                                                   "description":  "Array of strings.",
+                                                                                   "items":  {
+                                                                                                 "type":  "string"
+                                                                                             },
+                                                                                   "type":  "array"
+                                                                               },
+                                                       "review_decision":  {
+                                                                               "description":  "GitHub review decision.",
+                                                                               "type":  "string|null"
+                                                                           },
+                                                       "reviews":  {
+                                                                       "description":  "Summary of latest PR reviews by state.",
+                                                                       "properties":  {
+                                                                                          "approved":  {
+                                                                                                           "type":  "number"
+                                                                                                       },
+                                                                                          "changes_requested":  {
+                                                                                                                    "type":  "number"
+                                                                                                                },
+                                                                                          "commented":  {
+                                                                                                            "type":  "number"
+                                                                                                        }
+                                                                                      },
+                                                                       "required":  [
+                                                                                        "approved",
+                                                                                        "changes_requested",
+                                                                                        "commented"
+                                                                                    ],
+                                                                       "type":  "object"
+                                                                   },
+                                                       "title":  {
+                                                                     "description":  "Pull request title.",
+                                                                     "type":  "string"
+                                                                 },
+                                                       "url":  {
+                                                                   "description":  "Pull request URL.",
+                                                                   "type":  "string"
+                                                               },
+                                                       "warnings":  {
+                                                                        "description":  "Array of strings.",
+                                                                        "items":  {
+                                                                                      "type":  "string"
+                                                                                  },
+                                                                        "type":  "array"
+                                                                    }
+                                                   },
+                                    "required":  [
+                                                     "title",
+                                                     "branch",
+                                                     "url",
+                                                     "review_decision",
+                                                     "requested_reviewers",
+                                                     "reviews",
+                                                     "latest_reviews",
+                                                     "ready",
+                                                     "recommended_action",
+                                                     "recommended_command",
+                                                     "blockers",
+                                                     "warnings"
+                                                 ],
+                                    "type":  "object"
+                                },
                      "self_check":  {
                                         "description":  "Self-check command JSON output.",
                                         "properties":  {

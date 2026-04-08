@@ -757,6 +757,51 @@ function Set-ToiPullRequestReady {
     }
 }
 
+function Merge-ToiPullRequest {
+    param(
+        [ValidateSet('merge', 'rebase', 'squash')]
+        [string]$Strategy = 'squash',
+
+        [switch]$DeleteBranch,
+        [switch]$Auto,
+        [switch]$Admin,
+        [switch]$DryRun
+    )
+
+    $arguments = @('pr', 'merge')
+
+    switch ($Strategy) {
+        'merge' { $arguments += '--merge' }
+        'rebase' { $arguments += '--rebase' }
+        'squash' { $arguments += '--squash' }
+    }
+
+    if ($DeleteBranch) {
+        $arguments += '--delete-branch'
+    }
+
+    if ($Auto) {
+        $arguments += '--auto'
+    }
+
+    if ($Admin) {
+        $arguments += '--admin'
+    }
+
+    if ($DryRun) {
+        return [PSCustomObject]@{
+            Command = @($arguments)
+            Output = @()
+        }
+    }
+
+    $result = Invoke-GitHubCli -Arguments $arguments
+    return [PSCustomObject]@{
+        Command = @($arguments)
+        Output = @($result.Output)
+    }
+}
+
 function Invoke-ToiValidationCommand {
     param(
         [Parameter(Mandatory = $true)]
@@ -1906,6 +1951,16 @@ function Get-ToiJsonCommandSchemas {
                 branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
                 dry_run = New-ToiSchemaField -Type 'boolean' -Description 'Whether the ready command was a dry run.'
                 undo = New-ToiSchemaField -Type 'boolean' -Description 'Whether the command would mark the PR as draft.'
+                command = $stringArray
+                output = $stringArray
+            })
+        pr_merge = (New-ToiObjectSchema -Description 'PR merge command JSON output.' -Required @('branch', 'dry_run', 'strategy', 'auto', 'admin', 'delete_branch', 'command', 'output') -Properties @{
+                branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
+                dry_run = New-ToiSchemaField -Type 'boolean' -Description 'Whether the merge command was a dry run.'
+                strategy = New-ToiSchemaField -Type 'string' -Description 'Requested merge strategy.'
+                auto = New-ToiSchemaField -Type 'boolean' -Description 'Whether auto-merge was requested.'
+                admin = New-ToiSchemaField -Type 'boolean' -Description 'Whether admin merge privileges were requested.'
+                delete_branch = New-ToiSchemaField -Type 'boolean' -Description 'Whether the branch should be deleted after merge.'
                 command = $stringArray
                 output = $stringArray
             })

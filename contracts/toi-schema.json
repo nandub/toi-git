@@ -616,6 +616,60 @@
                                                     ],
                                        "type":  "object"
                                    },
+                     "pr_merge":  {
+                                      "description":  "PR merge command JSON output.",
+                                      "properties":  {
+                                                         "admin":  {
+                                                                       "description":  "Whether admin merge privileges were requested.",
+                                                                       "type":  "boolean"
+                                                                   },
+                                                         "auto":  {
+                                                                      "description":  "Whether auto-merge was requested.",
+                                                                      "type":  "boolean"
+                                                                  },
+                                                         "branch":  {
+                                                                        "description":  "Current branch name.",
+                                                                        "type":  "string"
+                                                                    },
+                                                         "command":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
+                                                         "delete_branch":  {
+                                                                               "description":  "Whether the branch should be deleted after merge.",
+                                                                               "type":  "boolean"
+                                                                           },
+                                                         "dry_run":  {
+                                                                         "description":  "Whether the merge command was a dry run.",
+                                                                         "type":  "boolean"
+                                                                     },
+                                                         "output":  {
+                                                                        "description":  "Array of strings.",
+                                                                        "items":  {
+                                                                                      "type":  "string"
+                                                                                  },
+                                                                        "type":  "array"
+                                                                    },
+                                                         "strategy":  {
+                                                                          "description":  "Requested merge strategy.",
+                                                                          "type":  "string"
+                                                                      }
+                                                     },
+                                      "required":  [
+                                                       "branch",
+                                                       "dry_run",
+                                                       "strategy",
+                                                       "auto",
+                                                       "admin",
+                                                       "delete_branch",
+                                                       "command",
+                                                       "output"
+                                                   ],
+                                      "type":  "object"
+                                  },
                      "pr_ready":  {
                                       "description":  "PR ready command JSON output.",
                                       "properties":  {

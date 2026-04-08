@@ -8,17 +8,30 @@ function Invoke-ToiCommand {
     }
 
     if ($Arguments.Count -eq 0) {
-        throw 'Usage: .\\toi.ps1 pr <status|checks|ready> [args]'
+        throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge> [args]'
     }
 
     $json = $Arguments -contains '-Json'
     $dryRun = $Arguments -contains '-DryRun'
     $required = $Arguments -contains '-Required'
     $undo = $Arguments -contains '-Undo'
-    $filteredArguments = @($Arguments | Where-Object { $_ -notin @('-Json', '-DryRun', '-Required', '-Undo') })
+    $deleteBranch = $Arguments -contains '-DeleteBranch'
+    $auto = $Arguments -contains '-Auto'
+    $admin = $Arguments -contains '-Admin'
+    $mergeStrategy = 'squash'
+    if ($Arguments -contains '-Merge') {
+        $mergeStrategy = 'merge'
+    }
+    elseif ($Arguments -contains '-Rebase') {
+        $mergeStrategy = 'rebase'
+    }
+    elseif ($Arguments -contains '-Squash') {
+        $mergeStrategy = 'squash'
+    }
+    $filteredArguments = @($Arguments | Where-Object { $_ -notin @('-Json', '-DryRun', '-Required', '-Undo', '-DeleteBranch', '-Auto', '-Admin', '-Merge', '-Rebase', '-Squash') })
 
     if ($filteredArguments.Count -eq 0) {
-        throw 'Usage: .\\toi.ps1 pr <status|checks|ready> [args]'
+        throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge> [args]'
     }
 
     $action = $filteredArguments[0].ToLowerInvariant()
@@ -113,8 +126,39 @@ function Invoke-ToiCommand {
 
             $result.Output | ForEach-Object { Write-Host $_ }
         }
+        'merge' {
+            $result = Merge-ToiPullRequest -Strategy $mergeStrategy -DeleteBranch:$deleteBranch -Auto:$auto -Admin:$admin -DryRun:$dryRun
+
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    branch = $currentBranch
+                    dry_run = $dryRun
+                    strategy = $mergeStrategy
+                    auto = $auto
+                    admin = $admin
+                    delete_branch = $deleteBranch
+                    command = @($result.Command)
+                    output = @($result.Output)
+                })
+                return
+            }
+
+            Write-Section 'PR Merge'
+            Write-KeyValue 'Branch' $currentBranch
+            Write-KeyValue 'Dry Run' $dryRun
+            Write-KeyValue 'Strategy' $mergeStrategy
+            Write-KeyValue 'Auto' $auto
+            Write-KeyValue 'Admin' $admin
+            Write-KeyValue 'Delete Branch' $deleteBranch
+            if ($dryRun) {
+                Write-InfoLine ("gh " + ($result.Command -join ' '))
+                return
+            }
+
+            $result.Output | ForEach-Object { Write-Host $_ }
+        }
         default {
-            throw 'Usage: .\\toi.ps1 pr <status|checks|ready> [args]'
+            throw 'Usage: .\\toi.ps1 pr <status|checks|ready|merge> [args]'
         }
     }
 }

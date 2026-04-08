@@ -1,6 +1,6 @@
 # TOI Git
 
-TOI Git is a small PowerShell CLI for common Git workflows with cleaner output and a few safe shortcuts.
+TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visible, adds typed branch workflows, and provides safety checks for day-to-day shipping.
 
 ## Commands
 
@@ -13,11 +13,42 @@ TOI Git is a small PowerShell CLI for common Git workflows with cleaner output a
 - `undo`: undo the last commit with a safe reset mode
 - `open`: open the repository remote in a browser
 - `worktree`: list or add Git worktrees
+- `start`: create a typed branch like `feature/login`
+- `doctor`: inspect repo state and suggest next actions
+- `ship`: assess whether a branch is ready for push or PR
+- `stack`: create or restack dependent branches
+- `release`: create release branches from the default branch
+- `hotfix`: create hotfix branches from the default branch
+
+## Workflow Shape
+
+- Everyday flow: `start`, `sync`, `save`, `ship`, `undo`
+- Team structure: typed branch names, protected branch awareness, default branch policy
+- Advanced flow: stack branches, release branches, hotfix branches, worktrees
+
+## Config
+
+TOI Git reads `toi.json` from the repository root.
+
+```json
+{
+  "defaultBranch": "main",
+  "branchTypes": ["feature", "fix", "hotfix", "release", "chore"],
+  "syncStrategy": "rebase",
+  "protectBranches": ["main"],
+  "commitConvention": "optional",
+  "releaseBranches": true,
+  "stackedBranches": true
+}
+```
 
 ## Usage
 
 ```powershell
 .\toi.ps1 status
+.\toi.ps1 start feature login-form
+.\toi.ps1 doctor
+.\toi.ps1 ship
 .\toi.ps1 summary
 .\toi.ps1 sync
 .\toi.ps1 commit "Add branch cleanup helper"
@@ -29,6 +60,10 @@ TOI Git is a small PowerShell CLI for common Git workflows with cleaner output a
 .\toi.ps1 open
 .\toi.ps1 worktree list
 .\toi.ps1 worktree add ..\Toi-feature feature/demo
+.\toi.ps1 stack new api-client
+.\toi.ps1 stack restack
+.\toi.ps1 release start 1.4.0
+.\toi.ps1 hotfix start payment-timeout
 ```
 
 Run the command from inside a Git repository.

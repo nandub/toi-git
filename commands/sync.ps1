@@ -14,9 +14,31 @@ function Invoke-ToiCommand {
     }
 
     $branch = Get-CurrentBranchName
-    $statusResult = Invoke-Git -GitArguments @('status', '--short', '--branch')
+    $upstreamRef = Get-UpstreamRef
+    $syncStrategy = Get-SyncStrategy
 
     Write-Section 'Tracking'
     Write-Host "Branch: $branch"
-    $statusResult.Output | Select-Object -First 1 | ForEach-Object { Write-Host $_ }
+
+    if ($upstreamRef) {
+        Write-Host "Upstream: $upstreamRef"
+
+        if (Test-WorkingTreeClean) {
+            if ($syncStrategy -eq 'rebase') {
+                $updateResult = Invoke-Git -GitArguments @('pull', '--rebase', '--autostash')
+            }
+            else {
+                $updateResult = Invoke-Git -GitArguments @('pull', '--ff-only')
+            }
+
+            Write-Section 'Update'
+            $updateResult.Output | ForEach-Object { Write-Host $_ }
+        }
+        else {
+            Write-WarningLine 'Working tree is not clean. Fetch completed, but branch update was skipped.'
+        }
+    }
+    else {
+        Write-InfoLine 'No upstream configured for the current branch.'
+    }
 }

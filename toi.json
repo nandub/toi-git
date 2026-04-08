@@ -1,0 +1,17 @@
+{
+  "defaultBranch": "main",
+  "branchTypes": [
+    "feature",
+    "fix",
+    "hotfix",
+    "release",
+    "chore"
+  ],
+  "syncStrategy": "rebase",
+  "protectBranches": [
+    "main"
+  ],
+  "commitConvention": "optional",
+  "releaseBranches": true,
+  "stackedBranches": true
+}

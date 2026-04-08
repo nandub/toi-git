@@ -24,6 +24,12 @@ $commandMap = @{
     'undo'         = Join-Path $root 'commands\undo.ps1'
     'open'         = Join-Path $root 'commands\open.ps1'
     'worktree'     = Join-Path $root 'commands\worktree.ps1'
+    'start'        = Join-Path $root 'commands\start.ps1'
+    'doctor'       = Join-Path $root 'commands\doctor.ps1'
+    'ship'         = Join-Path $root 'commands\ship.ps1'
+    'stack'        = Join-Path $root 'commands\stack.ps1'
+    'release'      = Join-Path $root 'commands\release.ps1'
+    'hotfix'       = Join-Path $root 'commands\hotfix.ps1'
     'help'         = $null
 }
 
@@ -41,6 +47,12 @@ function Show-Help {
     Write-Host '  undo          Undo the last commit with a safe reset mode'
     Write-Host '  open          Open the repository remote in a browser'
     Write-Host '  worktree      List or add Git worktrees'
+    Write-Host '  start         Create a typed branch with TOI naming rules'
+    Write-Host '  doctor        Inspect repo state and suggest next actions'
+    Write-Host '  ship          Check branch readiness for push or PR'
+    Write-Host '  stack         Create or restack dependent branches'
+    Write-Host '  release       Start a release branch'
+    Write-Host '  hotfix        Start a hotfix branch from the default branch'
 }
 
 if (-not $Command) {

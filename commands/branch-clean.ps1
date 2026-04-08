@@ -5,7 +5,7 @@ function Invoke-ToiCommand {
 
     $apply = $Arguments -contains '-Apply'
     $currentBranch = Get-CurrentBranchName
-    $protectedBranches = Get-DefaultProtectedBranches
+    $protectedBranches = Get-ProtectedBranches
 
     if (-not (Test-HasCommits)) {
         Write-Section 'Merged Branches'

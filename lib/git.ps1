@@ -136,3 +136,232 @@ function Convert-RemoteToBrowseUrl {
 
     return $RemoteUrl -replace '\.git$', ''
 }
+
+function Get-ToiConfig {
+    $repoRoot = Get-RepositoryRoot
+    $configPath = Join-Path $repoRoot 'toi.json'
+
+    $defaultConfig = [PSCustomObject]@{
+        defaultBranch    = 'main'
+        branchTypes      = @('feature', 'fix', 'hotfix', 'release', 'chore')
+        syncStrategy     = 'rebase'
+        protectBranches  = @('main')
+        commitConvention = 'optional'
+        releaseBranches  = $true
+        stackedBranches  = $true
+    }
+
+    if (-not (Test-Path -LiteralPath $configPath)) {
+        return $defaultConfig
+    }
+
+    $raw = Get-Content -LiteralPath $configPath -Raw
+    if (-not $raw.Trim()) {
+        return $defaultConfig
+    }
+
+    $parsed = $raw | ConvertFrom-Json
+
+    return [PSCustomObject]@{
+        defaultBranch    = if ($parsed.defaultBranch) { [string]$parsed.defaultBranch } else { $defaultConfig.defaultBranch }
+        branchTypes      = if ($parsed.branchTypes) { @($parsed.branchTypes) } else { $defaultConfig.branchTypes }
+        syncStrategy     = if ($parsed.syncStrategy) { [string]$parsed.syncStrategy } else { $defaultConfig.syncStrategy }
+        protectBranches  = if ($parsed.protectBranches) { @($parsed.protectBranches) } else { $defaultConfig.protectBranches }
+        commitConvention = if ($parsed.commitConvention) { [string]$parsed.commitConvention } else { $defaultConfig.commitConvention }
+        releaseBranches  = if ($null -ne $parsed.releaseBranches) { [bool]$parsed.releaseBranches } else { $defaultConfig.releaseBranches }
+        stackedBranches  = if ($null -ne $parsed.stackedBranches) { [bool]$parsed.stackedBranches } else { $defaultConfig.stackedBranches }
+    }
+}
+
+function Get-DefaultBranchName {
+    $config = Get-ToiConfig
+    return $config.defaultBranch
+}
+
+function Get-ProtectedBranches {
+    $config = Get-ToiConfig
+    $branches = @($config.protectBranches + (Get-DefaultProtectedBranches))
+    return $branches | Sort-Object -Unique
+}
+
+function Get-AllowedBranchTypes {
+    $config = Get-ToiConfig
+    return @($config.branchTypes)
+}
+
+function Get-SyncStrategy {
+    $config = Get-ToiConfig
+    return $config.syncStrategy
+}
+
+function Test-ReleaseBranchesEnabled {
+    $config = Get-ToiConfig
+    return [bool]$config.releaseBranches
+}
+
+function Test-StackedBranchesEnabled {
+    $config = Get-ToiConfig
+    return [bool]$config.stackedBranches
+}
+
+function ConvertTo-BranchSlug {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $slug = $Name.ToLowerInvariant()
+    $slug = $slug -replace '[^a-z0-9]+', '-'
+    $slug = $slug.Trim('-')
+
+    if (-not $slug) {
+        throw 'Branch name must contain letters or numbers.'
+    }
+
+    return $slug
+}
+
+function New-BranchName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Type,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $slug = ConvertTo-BranchSlug -Name $Name
+    return "$Type/$slug"
+}
+
+function Get-UpstreamRef {
+    $result = Invoke-Git -GitArguments @('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}') -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        return $null
+    }
+
+    return ($result.Output | Select-Object -First 1).Trim()
+}
+
+function Test-WorkingTreeClean {
+    $status = Get-StatusLines | Select-Object -Skip 1
+    return $status.Count -eq 0
+}
+
+function Get-StatusSummary {
+    $statusLines = Get-StatusLines | Select-Object -Skip 1
+    $summary = [PSCustomObject]@{
+        ChangedFiles = $statusLines.Count
+        Staged       = 0
+        Unstaged     = 0
+        Untracked    = 0
+    }
+
+    foreach ($line in $statusLines) {
+        if ($line.Length -lt 3) {
+            continue
+        }
+
+        $indexState = $line.Substring(0, 1)
+        $workTreeState = $line.Substring(1, 1)
+
+        if ($indexState -eq '?' -and $workTreeState -eq '?') {
+            $summary.Untracked++
+            continue
+        }
+
+        if ($indexState -ne ' ') {
+            $summary.Staged++
+        }
+
+        if ($workTreeState -ne ' ') {
+            $summary.Unstaged++
+        }
+    }
+
+    return $summary
+}
+
+function Test-RefExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RefName
+    )
+
+    $result = Invoke-Git -GitArguments @('show-ref', '--verify', '--quiet', $RefName) -AllowFailure
+    return $result.ExitCode -eq 0
+}
+
+function Test-BranchExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName
+    )
+
+    return (Test-RefExists -RefName "refs/heads/$BranchName")
+}
+
+function Get-BranchBaseRef {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchType,
+
+        [switch]$Stack
+    )
+
+    $defaultBranch = Get-DefaultBranchName
+    $currentBranch = Get-CurrentBranchName
+
+    if ($Stack) {
+        return $currentBranch
+    }
+
+    if ($BranchType -eq 'hotfix' -or $BranchType -eq 'release') {
+        return $defaultBranch
+    }
+
+    return $defaultBranch
+}
+
+function Get-AheadBehind {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LeftRef,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RightRef
+    )
+
+    $result = Invoke-Git -GitArguments @('rev-list', '--left-right', '--count', "$LeftRef...$RightRef") -AllowFailure
+
+    if ($result.ExitCode -ne 0 -or -not $result.Output) {
+        return $null
+    }
+
+    $parts = (($result.Output | Select-Object -First 1).Trim() -split '\s+')
+    if ($parts.Count -lt 2) {
+        return $null
+    }
+
+    return [PSCustomObject]@{
+        LeftAhead  = [int]$parts[0]
+        RightAhead = [int]$parts[1]
+    }
+}
+
+function Get-CommitRangeSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BaseRef,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HeadRef
+    )
+
+    $result = Invoke-Git -GitArguments @('log', '--oneline', "$BaseRef..$HeadRef") -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        return @()
+    }
+
+    return @($result.Output | Where-Object { $_ -and $_.Trim() })
+}

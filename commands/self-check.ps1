@@ -184,6 +184,24 @@ function Invoke-ToiCommand {
         Add-CheckResult -Name $commandCheck.Name -Success $result.Success -Detail $result.Detail
     }
 
+    $publishDryRunResult = Invoke-CommandCheck -Name 'Publish Dry Run JSON' -CommandArgs @('publish', '-DryRun', '-Json') -TimeoutSeconds 15
+    if (-not $publishDryRunResult.Success) {
+        Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $publishDryRunResult.Detail
+    }
+    else {
+        try {
+            $publishDryRunParsed = $publishDryRunResult.Stdout | ConvertFrom-Json
+            if (-not ($publishDryRunParsed.PSObject.Properties.Name -contains 'branch')) {
+                throw "Missing field 'branch'."
+            }
+
+            Add-CheckResult -Name 'Publish Dry Run JSON' -Success $true -Detail 'Publish dry-run JSON returned a structured response.'
+        }
+        catch {
+            Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $_.Exception.Message
+        }
+    }
+
     $releaseNotesFile = Join-Path $root (Get-ReleaseNotesFile)
     $releaseNotesExisted = Test-Path -LiteralPath $releaseNotesFile
     $releaseNotesBackup = $null

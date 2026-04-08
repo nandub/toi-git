@@ -144,6 +144,8 @@ Use them this way:
 - `schema -Json` for the current JSON contract surface
 - `self-check -Json` for machine-readable local verification results
 
+The built-in `self-check` validates core JSON outputs against the declared contracts from `schema`, so automation drift is caught locally before CI.
+
 GitHub Actions currently does this on pushes to `main` and on pull requests:
 
 - runs the built-in self-check

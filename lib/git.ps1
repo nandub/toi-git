@@ -1377,21 +1377,112 @@ function New-ToiSchemaField {
     return [PSCustomObject]$field
 }
 
-function Get-ToiJsonCommandSchemas {
-    $stringArray = New-ToiSchemaField -Type 'array' -Description 'Array of strings.' -Items ([PSCustomObject]@{ type = 'string' })
-    $qualityGateArray = New-ToiSchemaField -Type 'array' -Description 'Array of quality gate results.' -Items ([PSCustomObject]@{
-        type = 'object'
-        properties = [PSCustomObject]@{
-            command = 'string'
-            success = 'boolean'
-            exit_code = 'number'
-        }
-    })
+function New-ToiObjectSchema {
+    param(
+        [string]$Description,
+        [string[]]$Required,
+        [hashtable]$Properties
+    )
+
+    $propertyBag = [ordered]@{}
+    foreach ($key in $Properties.Keys) {
+        $propertyBag[$key] = $Properties[$key]
+    }
 
     return [PSCustomObject]@{
-        status = [PSCustomObject]@{
-            required = @('branch', 'published', 'upstream', 'branch_line', 'staged', 'unstaged', 'untracked')
-            properties = [PSCustomObject]@{
+        type = 'object'
+        description = $Description
+        required = @($Required)
+        properties = [PSCustomObject]$propertyBag
+    }
+}
+
+function New-ToiArraySchema {
+    param(
+        [string]$Description,
+        [Parameter(Mandatory = $true)]
+        [psobject]$Items
+    )
+
+    return [PSCustomObject]@{
+        type = 'array'
+        description = $Description
+        items = $Items
+    }
+}
+
+function Get-ToiJsonCommandSchemas {
+    $stringField = New-ToiSchemaField -Type 'string'
+    $booleanField = New-ToiSchemaField -Type 'boolean'
+    $numberField = New-ToiSchemaField -Type 'number'
+    $stringArray = New-ToiArraySchema -Description 'Array of strings.' -Items $stringField
+    $qualityGateResultSchema = New-ToiObjectSchema -Description 'Validation command result.' -Required @('command', 'success', 'exit_code') -Properties @{
+        command = (New-ToiSchemaField -Type 'string' -Description 'Validation command text.')
+        success = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the validation command succeeded.')
+        exit_code = (New-ToiSchemaField -Type 'number' -Description 'Validation command exit code.')
+    }
+    $qualityGateArray = New-ToiArraySchema -Description 'Array of quality gate results.' -Items $qualityGateResultSchema
+    $branchSchema = New-ToiObjectSchema -Description 'Branch-level workflow metadata.' -Required @('current', 'type', 'default', 'published', 'note', 'commit_convention') -Properties @{
+        current = (New-ToiSchemaField -Type 'string' -Description 'Current branch name.')
+        type = (New-ToiSchemaField -Type 'string|null' -Description 'Detected TOI branch type.')
+        default = (New-ToiSchemaField -Type 'string' -Description 'Configured default branch name.')
+        published = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the current branch exists on a remote.')
+        note = (New-ToiSchemaField -Type 'string|null' -Description 'Local branch note, if present.')
+        commit_convention = (New-ToiSchemaField -Type 'string' -Description 'Configured commit convention mode.')
+    }
+    $workingTreeSchema = New-ToiObjectSchema -Description 'Working tree counts.' -Required @('changed_files', 'staged', 'unstaged', 'untracked') -Properties @{
+        changed_files = (New-ToiSchemaField -Type 'number' -Description 'Changed file count.')
+        staged = (New-ToiSchemaField -Type 'number' -Description 'Staged file count.')
+        unstaged = (New-ToiSchemaField -Type 'number' -Description 'Unstaged file count.')
+        untracked = (New-ToiSchemaField -Type 'number' -Description 'Untracked file count.')
+    }
+    $publishSchema = New-ToiObjectSchema -Description 'Publish/upstream status.' -Required @('upstream', 'ahead', 'behind') -Properties @{
+        upstream = (New-ToiSchemaField -Type 'string|null' -Description 'Configured upstream ref, if present.')
+        ahead = (New-ToiSchemaField -Type 'number|null' -Description 'Commits ahead of upstream.')
+        behind = (New-ToiSchemaField -Type 'number|null' -Description 'Commits behind upstream.')
+    }
+    $stackSchema = New-ToiObjectSchema -Description 'Stack-parent and default-branch comparison state.' -Required @('parent', 'behind_default') -Properties @{
+        parent = (New-ToiSchemaField -Type 'string|null' -Description 'Recorded stack parent branch.')
+        behind_default = (New-ToiSchemaField -Type 'number|null' -Description 'Commits behind the default branch.')
+    }
+    $qualityGatesSchema = New-ToiObjectSchema -Description 'Configured validation mode and latest results.' -Required @('mode', 'has_checks', 'results') -Properties @{
+        mode = (New-ToiSchemaField -Type 'string' -Description 'Validation mode.')
+        has_checks = (New-ToiSchemaField -Type 'boolean' -Description 'Whether validation commands are configured.')
+        results = $qualityGateArray
+    }
+    $policySchema = New-ToiObjectSchema -Description 'Active workflow policy flags.' -Required @('require_branch_note') -Properties @{
+        require_branch_note = (New-ToiSchemaField -Type 'boolean' -Description 'Whether non-default branches require a local note.')
+    }
+    $doctorSchema = New-ToiObjectSchema -Description 'Doctor recommendations.' -Required @('recommendations') -Properties @{
+        recommendations = $stringArray
+    }
+    $shipAssessmentSchema = New-ToiObjectSchema -Description 'Shipping assessment.' -Required @('blocking_issues', 'notes', 'commit_range', 'shippable') -Properties @{
+        blocking_issues = $stringArray
+        notes = $stringArray
+        commit_range = $stringArray
+        shippable = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the branch is shippable.')
+    }
+    $selfCheckResultSchema = New-ToiObjectSchema -Description 'Per-check result.' -Required @('name', 'success', 'detail') -Properties @{
+        name = $stringField
+        success = $booleanField
+        detail = $stringField
+    }
+    $selfCheckSummarySchema = New-ToiObjectSchema -Description 'Aggregate pass/fail counts.' -Required @('checks', 'passed', 'failed') -Properties @{
+        checks = $numberField
+        passed = $numberField
+        failed = $numberField
+    }
+    $snapshotSchema = New-ToiObjectSchema -Description 'Workflow snapshot model.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy') -Properties @{
+        branch = $branchSchema
+        working_tree = $workingTreeSchema
+        publish = $publishSchema
+        stack = $stackSchema
+        quality_gates = $qualityGatesSchema
+        policy = $policySchema
+    }
+
+    return [PSCustomObject]@{
+        status = (New-ToiObjectSchema -Description 'Status command JSON output.' -Required @('branch', 'published', 'upstream', 'branch_line', 'staged', 'unstaged', 'untracked') -Properties @{
                 branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
                 published = New-ToiSchemaField -Type 'boolean' -Description 'Whether the current branch exists on a remote.'
                 upstream = New-ToiSchemaField -Type 'string|null' -Description 'Configured upstream ref, if present.'
@@ -1399,53 +1490,42 @@ function Get-ToiJsonCommandSchemas {
                 staged = $stringArray
                 unstaged = $stringArray
                 untracked = $stringArray
-            }
-        }
-        dashboard = [PSCustomObject]@{
-            required = @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'next_actions')
-            properties = [PSCustomObject]@{
-                branch = New-ToiSchemaField -Type 'object' -Description 'Branch-level workflow metadata.'
-                working_tree = New-ToiSchemaField -Type 'object' -Description 'Working tree counts.'
-                publish = New-ToiSchemaField -Type 'object' -Description 'Publish/upstream status.'
-                stack = New-ToiSchemaField -Type 'object' -Description 'Stack-parent and default-branch comparison state.'
-                quality_gates = New-ToiSchemaField -Type 'object' -Description 'Configured validation mode and latest results.'
-                policy = New-ToiSchemaField -Type 'object' -Description 'Active workflow policy flags.'
+            })
+        dashboard = (New-ToiObjectSchema -Description 'Dashboard command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'next_actions') -Properties @{
+                branch = $branchSchema
+                working_tree = $workingTreeSchema
+                publish = $publishSchema
+                stack = $stackSchema
+                quality_gates = $qualityGatesSchema
+                policy = $policySchema
                 next_actions = $stringArray
-            }
-        }
-        next = [PSCustomObject]@{
-            required = @('branch', 'message', 'published')
-            properties = [PSCustomObject]@{
+            })
+        next = (New-ToiObjectSchema -Description 'Next command JSON output.' -Required @('branch', 'message', 'published') -Properties @{
                 branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
                 message = New-ToiSchemaField -Type 'string' -Description 'Single recommended next action.'
                 published = New-ToiSchemaField -Type 'boolean' -Description 'Whether the branch is published.'
-            }
-        }
-        doctor = [PSCustomObject]@{
-            required = @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'recommendations')
-            properties = [PSCustomObject]@{
-                branch = New-ToiSchemaField -Type 'object' -Description 'Branch-level workflow metadata.'
-                working_tree = New-ToiSchemaField -Type 'object' -Description 'Working tree counts.'
-                publish = New-ToiSchemaField -Type 'object' -Description 'Publish/upstream status.'
-                stack = New-ToiSchemaField -Type 'object' -Description 'Stack-parent and default-branch comparison state.'
-                quality_gates = New-ToiSchemaField -Type 'object' -Description 'Configured validation mode and latest results.'
-                policy = New-ToiSchemaField -Type 'object' -Description 'Active workflow policy flags.'
+            })
+        doctor = (New-ToiObjectSchema -Description 'Doctor command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'recommendations') -Properties @{
+                branch = $branchSchema
+                working_tree = $workingTreeSchema
+                publish = $publishSchema
+                stack = $stackSchema
+                quality_gates = $qualityGatesSchema
+                policy = $policySchema
                 recommendations = $stringArray
-            }
-        }
-        ship = [PSCustomObject]@{
-            required = @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'ship')
-            properties = [PSCustomObject]@{
-                branch = New-ToiSchemaField -Type 'object' -Description 'Branch-level workflow metadata.'
-                working_tree = New-ToiSchemaField -Type 'object' -Description 'Working tree counts.'
-                publish = New-ToiSchemaField -Type 'object' -Description 'Publish/upstream status.'
-                stack = New-ToiSchemaField -Type 'object' -Description 'Stack-parent and default-branch comparison state.'
-                quality_gates = New-ToiSchemaField -Type 'object' -Description 'Configured validation mode and latest results.'
-                policy = New-ToiSchemaField -Type 'object' -Description 'Active workflow policy flags.'
-                ship = New-ToiSchemaField -Type 'object' -Description 'Shipping assessment and commit range.'
-            }
-        }
+            })
+        ship = (New-ToiObjectSchema -Description 'Ship command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'ship') -Properties @{
+                branch = $branchSchema
+                working_tree = $workingTreeSchema
+                publish = $publishSchema
+                stack = $stackSchema
+                quality_gates = $qualityGatesSchema
+                policy = $policySchema
+                ship = $shipAssessmentSchema
+            })
         publish = [PSCustomObject]@{
+            type = 'object'
+            description = 'Publish command JSON output.'
             required = @('branch', 'dry_run', 'quality_gate_mode', 'upstream', 'branch_url', 'pr_url', 'push_output', 'quality_gates')
             properties = [PSCustomObject]@{
                 branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
@@ -1466,30 +1546,17 @@ function Get-ToiJsonCommandSchemas {
                 }
             }
         }
-        self_check = [PSCustomObject]@{
-            required = @('checks', 'summary')
-            properties = [PSCustomObject]@{
-                checks = New-ToiSchemaField -Type 'array' -Description 'Per-check results.' -Items ([PSCustomObject]@{
-                    type = 'object'
-                    properties = [PSCustomObject]@{
-                        name = 'string'
-                        success = 'boolean'
-                        detail = 'string'
-                    }
-                })
-                summary = New-ToiSchemaField -Type 'object' -Description 'Aggregate pass/fail counts.'
-            }
-        }
-        report = [PSCustomObject]@{
-            required = @('generated_at', 'snapshot', 'next_actions', 'doctor', 'ship')
-            properties = [PSCustomObject]@{
+        self_check = (New-ToiObjectSchema -Description 'Self-check command JSON output.' -Required @('checks', 'summary') -Properties @{
+                checks = (New-ToiArraySchema -Description 'Per-check results.' -Items $selfCheckResultSchema)
+                summary = $selfCheckSummarySchema
+            })
+        report = (New-ToiObjectSchema -Description 'Report command JSON output.' -Required @('generated_at', 'snapshot', 'next_actions', 'doctor', 'ship') -Properties @{
                 generated_at = New-ToiSchemaField -Type 'string' -Description 'Local timestamp when the report was generated.'
-                snapshot = New-ToiSchemaField -Type 'object' -Description 'Workflow snapshot model.'
+                snapshot = $snapshotSchema
                 next_actions = $stringArray
-                doctor = New-ToiSchemaField -Type 'object' -Description 'Doctor recommendations.'
-                ship = New-ToiSchemaField -Type 'object' -Description 'Shipping assessment.'
-            }
-        }
+                doctor = $doctorSchema
+                ship = $shipAssessmentSchema
+            })
     }
 }
 
@@ -1525,4 +1592,84 @@ function Convert-ToiSchemaToMarkdown {
     }
 
     return ($lines -join [Environment]::NewLine)
+}
+
+function Test-ToiValueMatchesSchemaType {
+    param(
+        [object]$Value,
+        [Parameter(Mandatory = $true)]
+        [string]$Type
+    )
+
+    switch ($Type) {
+        'string' { return $Value -is [string] }
+        'boolean' { return $Value -is [bool] }
+        'number' { return $Value -is [byte] -or $Value -is [int16] -or $Value -is [int32] -or $Value -is [int64] -or $Value -is [single] -or $Value -is [double] -or $Value -is [decimal] }
+        'object' { return $null -ne $Value -and $Value -isnot [string] -and $Value -isnot [System.Array] -and $Value.PSObject -and $Value.PSObject.Properties.Count -ge 0 }
+        'array' { return $Value -is [System.Array] }
+        'null' { return $null -eq $Value }
+        default { return $false }
+    }
+}
+
+function Get-ToiSchemaValidationErrors {
+    param(
+        [object]$Value,
+        [Parameter(Mandatory = $true)]
+        [psobject]$Schema,
+        [string]$Path = '$'
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+    $types = @()
+    if ($Schema.type) {
+        $types = @(([string]$Schema.type) -split '\|')
+    }
+
+    $matchesAnyType = $false
+    foreach ($candidateType in $types) {
+        if (Test-ToiValueMatchesSchemaType -Value $Value -Type $candidateType) {
+            $matchesAnyType = $true
+            break
+        }
+    }
+
+    if (-not $matchesAnyType) {
+        $errors.Add("$Path expected type '$($Schema.type)'.")
+        return @($errors)
+    }
+
+    if ($null -eq $Value) {
+        return @($errors)
+    }
+
+    if ($types -contains 'object' -and $Schema.required) {
+        foreach ($requiredField in $Schema.required) {
+            if (-not ($Value.PSObject.Properties.Name -contains $requiredField)) {
+                $errors.Add("$Path missing required field '$requiredField'.")
+            }
+        }
+    }
+
+    if ($types -contains 'object' -and $Schema.properties) {
+        foreach ($property in $Schema.properties.PSObject.Properties) {
+            if ($Value.PSObject.Properties.Name -contains $property.Name) {
+                $childErrors = Get-ToiSchemaValidationErrors -Value $Value.$($property.Name) -Schema $property.Value -Path "$Path.$($property.Name)"
+                foreach ($childError in $childErrors) {
+                    $errors.Add($childError)
+                }
+            }
+        }
+    }
+
+    if ($types -contains 'array' -and $Schema.items -and $Value -is [System.Array]) {
+        for ($index = 0; $index -lt $Value.Count; $index++) {
+            $childErrors = Get-ToiSchemaValidationErrors -Value $Value[$index] -Schema $Schema.items -Path "$Path[$index]"
+            foreach ($childError in $childErrors) {
+                $errors.Add($childError)
+            }
+        }
+    }
+
+    return @($errors)
 }

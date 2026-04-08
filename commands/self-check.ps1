@@ -125,6 +125,16 @@ function Invoke-ToiCommand {
         Add-CheckResult -Name 'Workflow snapshot' -Success $false -Detail $_.Exception.Message
     }
 
+    try {
+        $contractSchema = Get-ToiSchemaModel
+        $null = $contractSchema.commands.status
+        Add-CheckResult -Name 'Contract schema' -Success $true -Detail "Contract version: $($contractSchema.contract_version)"
+    }
+    catch {
+        $contractSchema = $null
+        Add-CheckResult -Name 'Contract schema' -Success $false -Detail $_.Exception.Message
+    }
+
     $commandChecks = @(
         @{ Name = 'Help';      Args = @();            TimeoutSeconds = 10 },
         @{ Name = 'Status';    Args = @('status');    TimeoutSeconds = 15 },
@@ -137,9 +147,9 @@ function Invoke-ToiCommand {
     }
 
     $jsonChecks = @(
-        @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published') },
-        @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions') },
-        @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship') },
+        @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published'); SchemaKey = 'status' },
+        @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },
+        @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship'); SchemaKey = 'report' },
         @{ Name = 'Schema JSON'; Args = @('schema', '-Json'); TimeoutSeconds = 20; Required = @('contract_version', 'commands') }
     )
 
@@ -159,7 +169,19 @@ function Invoke-ToiCommand {
                 }
             }
 
-            Add-CheckResult -Name $jsonCheck.Name -Success $true -Detail 'JSON parsed and required fields were present.'
+            if ($jsonCheck.SchemaKey -and $contractSchema) {
+                $schemaEntry = $contractSchema.commands.PSObject.Properties[$jsonCheck.SchemaKey]
+                if (-not $schemaEntry) {
+                    throw "Missing schema entry '$($jsonCheck.SchemaKey)'."
+                }
+
+                $validationErrors = @(Get-ToiSchemaValidationErrors -Value $parsed -Schema $schemaEntry.Value)
+                if ($validationErrors.Count -gt 0) {
+                    throw ($validationErrors | Select-Object -First 1)
+                }
+            }
+
+            Add-CheckResult -Name $jsonCheck.Name -Success $true -Detail 'JSON parsed and matched the declared contract.'
         }
         catch {
             Add-CheckResult -Name $jsonCheck.Name -Success $false -Detail $_.Exception.Message

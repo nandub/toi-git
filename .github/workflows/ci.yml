@@ -26,6 +26,10 @@ jobs:
         shell: pwsh
         run: ./toi.ps1 report | Out-File -FilePath toi-report.md -Encoding utf8
 
+      - name: Capture TOI workflow report JSON
+        shell: pwsh
+        run: ./toi.ps1 report -Json | Out-File -FilePath toi-report.json -Encoding utf8
+
       - name: Publish job summary
         shell: pwsh
         run: |
@@ -41,4 +45,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: toi-workflow-report
-          path: toi-report.md
+          path: |
+            toi-report.md
+            toi-report.json

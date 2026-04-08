@@ -21,6 +21,84 @@ function Invoke-ToiCommand {
         })
     }
 
+    function Invoke-CommandCheck {
+        param(
+            [string]$Name,
+            [string[]]$CommandArgs,
+            [int]$TimeoutSeconds
+        )
+
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = 'powershell'
+        $escapedArgs = $CommandArgs | ForEach-Object {
+            if ($_ -match '[\s"]') {
+                '"' + ($_ -replace '"', '\"') + '"'
+            }
+            else {
+                $_
+            }
+        }
+
+        $commandText = "& .\toi.ps1 $($escapedArgs -join ' ')"
+        $quotedCommandText = '"' + ($commandText -replace '"', '\"') + '"'
+        $startInfo.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $quotedCommandText"
+        $startInfo.UseShellExecute = $false
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $startInfo.CreateNoWindow = $true
+        $startInfo.WorkingDirectory = $root
+
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        [void]$process.Start()
+        $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+
+        if (-not $completed) {
+            try {
+                $process.Kill()
+            }
+            catch {
+            }
+
+            return [PSCustomObject]@{
+                Success = $false
+                Detail = "Timed out after ${TimeoutSeconds}s."
+                Stdout = ''
+                Stderr = ''
+            }
+        }
+
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+
+        if ($process.ExitCode -eq 0) {
+            $firstLine = (($stdout -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+            if (-not $firstLine) {
+                $firstLine = 'Command completed successfully.'
+            }
+
+            return [PSCustomObject]@{
+                Success = $true
+                Detail = $firstLine
+                Stdout = $stdout
+                Stderr = $stderr
+            }
+        }
+
+        $detail = (($stderr -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+        if (-not $detail) {
+            $detail = 'Command failed.'
+        }
+
+        return [PSCustomObject]@{
+            Success = $false
+            Detail = $detail
+            Stdout = $stdout
+            Stderr = $stderr
+        }
+    }
+
     try {
         $config = Get-ToiConfig
         $null = $config.defaultBranch
@@ -46,51 +124,36 @@ function Invoke-ToiCommand {
     )
 
     foreach ($commandCheck in $commandChecks) {
-        $argList = @('-ExecutionPolicy', 'Bypass', '-File', '.\toi.ps1') + $commandCheck.Args
-        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.FileName = 'powershell'
-        $startInfo.Arguments = ($argList -join ' ')
-        $startInfo.UseShellExecute = $false
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-        $startInfo.CreateNoWindow = $true
-        $startInfo.WorkingDirectory = $root
+        $result = Invoke-CommandCheck -Name $commandCheck.Name -CommandArgs $commandCheck.Args -TimeoutSeconds $commandCheck.TimeoutSeconds
+        Add-CheckResult -Name $commandCheck.Name -Success $result.Success -Detail $result.Detail
+    }
 
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $startInfo
-        [void]$process.Start()
-        $completed = $process.WaitForExit($commandCheck.TimeoutSeconds * 1000)
+    $jsonChecks = @(
+        @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published') },
+        @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions') },
+        @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship') }
+    )
 
-        if (-not $completed) {
-            try {
-                $process.Kill()
-            }
-            catch {
-            }
+    foreach ($jsonCheck in $jsonChecks) {
+        $result = Invoke-CommandCheck -Name $jsonCheck.Name -CommandArgs $jsonCheck.Args -TimeoutSeconds $jsonCheck.TimeoutSeconds
 
-            Add-CheckResult -Name $commandCheck.Name -Success $false -Detail "Timed out after $($commandCheck.TimeoutSeconds)s."
+        if (-not $result.Success) {
+            Add-CheckResult -Name $jsonCheck.Name -Success $false -Detail $result.Detail
             continue
         }
 
-        $stdout = $process.StandardOutput.ReadToEnd()
-        $stderr = $process.StandardError.ReadToEnd()
-        $process.WaitForExit()
-
-        if ($process.ExitCode -eq 0) {
-            $firstLine = (($stdout -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
-            if (-not $firstLine) {
-                $firstLine = 'Command completed successfully.'
+        try {
+            $parsed = $result.Stdout | ConvertFrom-Json
+            foreach ($field in $jsonCheck.Required) {
+                if (-not ($parsed.PSObject.Properties.Name -contains $field)) {
+                    throw "Missing field '$field'."
+                }
             }
 
-            Add-CheckResult -Name $commandCheck.Name -Success $true -Detail $firstLine
+            Add-CheckResult -Name $jsonCheck.Name -Success $true -Detail 'JSON parsed and required fields were present.'
         }
-        else {
-            $detail = (($stderr -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
-            if (-not $detail) {
-                $detail = 'Command failed.'
-            }
-
-            Add-CheckResult -Name $commandCheck.Name -Success $false -Detail $detail
+        catch {
+            Add-CheckResult -Name $jsonCheck.Name -Success $false -Detail $_.Exception.Message
         }
     }
 

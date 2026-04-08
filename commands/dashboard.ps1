@@ -10,6 +10,8 @@ function Invoke-ToiCommand {
     $published = Test-CurrentBranchPublished
     $status = Get-StatusSummary
     $parent = Get-ToiStackParent -BranchName $branch
+    $note = Get-ToiBranchNote -BranchName $branch
+    $commitConvention = Get-CommitConvention
     $validationSuite = Invoke-ToiValidationSuite
     $nextActions = New-Object System.Collections.Generic.List[string]
 
@@ -29,12 +31,20 @@ function Invoke-ToiCommand {
         $nextActions.Add('Create a typed branch with `.\toi.ps1 start feature <name>` for the next change.')
     }
 
+    if ((Test-BranchNoteRequired) -and $branch -ne $defaultBranch -and -not $note) {
+        $nextActions.Add('Add a branch note with `.\toi.ps1 note set <text>`.')
+    }
+
     if ($sections -contains 'branch') {
         Write-Section 'Branch'
         Write-Host "Current: $branch"
         Write-Host "Default: $defaultBranch"
         Write-Host "Published: $published"
         Write-Host "Working tree: $($status.ChangedFiles) changed file(s)"
+        Write-Host "Commit convention: $commitConvention"
+        if ($note) {
+            Write-Host "Note: $note"
+        }
     }
 
     if ($sections -contains 'publish') {

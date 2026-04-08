@@ -9,6 +9,7 @@ function Invoke-ToiCommand {
     $status = Get-StatusSummary
     $upstreamRef = Get-UpstreamRef
     $parent = Get-ToiStackParent -BranchName $branch
+    $note = Get-ToiBranchNote -BranchName $branch
 
     Write-Section 'Next'
 
@@ -19,6 +20,11 @@ function Invoke-ToiCommand {
 
     if ($branch -eq $defaultBranch) {
         Write-InfoLine 'Create a typed branch with `.\toi.ps1 start feature <name>`.'
+        return
+    }
+
+    if ((Test-BranchNoteRequired) -and -not $note) {
+        Write-InfoLine 'Add a branch note with `.\toi.ps1 note set <text>`.'
         return
     }
 

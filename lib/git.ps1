@@ -172,6 +172,8 @@ function Get-ToiConfig {
         syncStrategy     = 'rebase'
         protectBranches  = @('main')
         commitConvention = 'optional'
+        commitScopes     = @()
+        branchNoteRequired = $false
         qualityGateMode  = 'warn'
         validationCommands = @()
         requirePublishedForPr = $true
@@ -200,6 +202,8 @@ function Get-ToiConfig {
         syncStrategy     = if ($parsed.syncStrategy) { [string]$parsed.syncStrategy } else { $defaultConfig.syncStrategy }
         protectBranches  = if ($parsed.protectBranches) { @($parsed.protectBranches) } else { $defaultConfig.protectBranches }
         commitConvention = if ($parsed.commitConvention) { [string]$parsed.commitConvention } else { $defaultConfig.commitConvention }
+        commitScopes     = if ($parsed.commitScopes) { @($parsed.commitScopes) } else { $defaultConfig.commitScopes }
+        branchNoteRequired = if ($null -ne $parsed.branchNoteRequired) { [bool]$parsed.branchNoteRequired } else { $defaultConfig.branchNoteRequired }
         qualityGateMode  = if ($parsed.qualityGateMode) { [string]$parsed.qualityGateMode } else { $defaultConfig.qualityGateMode }
         validationCommands = if ($parsed.validationCommands) { @($parsed.validationCommands) } else { $defaultConfig.validationCommands }
         requirePublishedForPr = if ($null -ne $parsed.requirePublishedForPr) { [bool]$parsed.requirePublishedForPr } else { $defaultConfig.requirePublishedForPr }
@@ -248,6 +252,21 @@ function Test-StackedBranchesEnabled {
 function Get-QualityGateMode {
     $config = Get-ToiConfig
     return $config.qualityGateMode
+}
+
+function Get-CommitConvention {
+    $config = Get-ToiConfig
+    return $config.commitConvention
+}
+
+function Get-CommitScopes {
+    $config = Get-ToiConfig
+    return @($config.commitScopes)
+}
+
+function Test-BranchNoteRequired {
+    $config = Get-ToiConfig
+    return [bool]$config.branchNoteRequired
 }
 
 function Get-ValidationCommands {
@@ -601,6 +620,163 @@ function Get-ToiStackMetadataPath {
     $gitDirResult = Invoke-Git -GitArguments @('rev-parse', '--git-dir')
     $gitDir = ($gitDirResult.Output | Select-Object -First 1).Trim()
     return (Join-Path $gitDir 'toi-stack.json')
+}
+
+function Get-ToiNotesMetadataPath {
+    $gitDirResult = Invoke-Git -GitArguments @('rev-parse', '--git-dir')
+    $gitDir = ($gitDirResult.Output | Select-Object -First 1).Trim()
+    return (Join-Path $gitDir 'toi-notes.json')
+}
+
+function Get-ToiNotesMetadata {
+    $path = Get-ToiNotesMetadataPath
+
+    if (-not (Test-Path -LiteralPath $path)) {
+        return [PSCustomObject]@{
+            branches = [PSCustomObject]@{}
+        }
+    }
+
+    $raw = Get-Content -LiteralPath $path -Raw
+    if (-not $raw.Trim()) {
+        return [PSCustomObject]@{
+            branches = [PSCustomObject]@{}
+        }
+    }
+
+    $parsed = $raw | ConvertFrom-Json
+    if (-not $parsed.branches) {
+        $parsed | Add-Member -NotePropertyName branches -NotePropertyValue ([PSCustomObject]@{}) -Force
+    }
+
+    return $parsed
+}
+
+function Save-ToiNotesMetadata {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Metadata
+    )
+
+    $path = Get-ToiNotesMetadataPath
+    $directory = Split-Path -Parent $path
+    if (-not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    $json = $Metadata | ConvertTo-Json -Depth 10
+    Set-Content -LiteralPath $path -Value $json
+}
+
+function Set-ToiBranchNote {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Note
+    )
+
+    $metadata = Get-ToiNotesMetadata
+    $branchesMap = [ordered]@{}
+
+    if ($metadata.branches) {
+        foreach ($property in $metadata.branches.PSObject.Properties) {
+            $branchesMap[$property.Name] = $property.Value
+        }
+    }
+
+    $branchesMap[$BranchName] = [PSCustomObject]@{
+        note = $Note
+    }
+
+    $metadata.branches = [PSCustomObject]$branchesMap
+    Save-ToiNotesMetadata -Metadata $metadata
+}
+
+function Get-ToiBranchNote {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName
+    )
+
+    $metadata = Get-ToiNotesMetadata
+    if (-not $metadata.branches) {
+        return $null
+    }
+
+    $entry = $metadata.branches.PSObject.Properties[$BranchName]
+    if (-not $entry) {
+        return $null
+    }
+
+    return [string]$entry.Value.note
+}
+
+function Remove-ToiBranchNote {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName
+    )
+
+    $metadata = Get-ToiNotesMetadata
+    $branchesMap = [ordered]@{}
+
+    if ($metadata.branches) {
+        foreach ($property in $metadata.branches.PSObject.Properties) {
+            if ($property.Name -ne $BranchName) {
+                $branchesMap[$property.Name] = $property.Value
+            }
+        }
+    }
+
+    $metadata.branches = [PSCustomObject]$branchesMap
+    Save-ToiNotesMetadata -Metadata $metadata
+}
+
+function Get-CurrentBranchType {
+    $branch = Get-CurrentBranchName
+    if ($branch -match '^([^/]+)/') {
+        return $matches[1]
+    }
+
+    return $null
+}
+
+function Test-ConventionalCommitMessage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message
+    )
+
+    return $Message -match '^[a-z]+(\([a-z0-9\-_]+\))?!?: .+'
+}
+
+function Get-CommitConventionHint {
+    $scopes = Get-CommitScopes
+    if ($scopes.Count -gt 0) {
+        return "Expected format: type(scope): summary. Allowed scopes: $($scopes -join ', ')"
+    }
+
+    return 'Expected format: type(scope): summary or type: summary'
+}
+
+function Test-AllowedCommitScope {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message
+    )
+
+    $scopes = Get-CommitScopes
+    if ($scopes.Count -eq 0) {
+        return $true
+    }
+
+    if ($Message -notmatch '^[a-z]+\(([^)]+)\)!?: .+') {
+        return $true
+    }
+
+    return $scopes -contains $matches[1]
 }
 
 function Get-ToiStackMetadata {

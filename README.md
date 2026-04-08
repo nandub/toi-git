@@ -19,6 +19,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - `publish`: push the current branch and print/open the PR path
 - `dashboard`: show a consolidated workflow overview
 - `next`: show the most likely next action
+- `note`: set or show a local note for the current branch
 - `stack`: create or restack dependent branches
 - `release`: start releases, scaffold notes, and create tags
 - `hotfix`: create hotfix branches from the default branch
@@ -29,6 +30,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - PR flow: `publish`, `open pr`, remote-aware `doctor`
 - Policy flow: configured quality gates can warn or block `ship` and `publish`
 - Daily view: `dashboard` and `next`
+- Local memory: `note` stores branch intent in the local `.git` directory
 - Team structure: typed branch names, protected branch awareness, default branch policy
 - Advanced flow: stack branches, release branches, release notes/tags, hotfix branches, worktrees
 
@@ -43,6 +45,8 @@ TOI Git reads `toi.json` from the repository root.
   "syncStrategy": "rebase",
   "protectBranches": ["main"],
   "commitConvention": "optional",
+  "commitScopes": [],
+  "branchNoteRequired": false,
   "qualityGateMode": "warn",
   "validationCommands": [],
   "requirePublishedForPr": true,
@@ -58,6 +62,9 @@ TOI Git reads `toi.json` from the repository root.
 Policy fields:
 
 - `qualityGateMode`: `warn` or `block`
+- `commitConvention`: `off`, `optional`, or `required`
+- `commitScopes`: allowed scopes for conventional commits
+- `branchNoteRequired`: if `true`, non-default branches should carry a local note
 - `validationCommands`: PowerShell commands to run before `ship` and `publish`
 - `requirePublishedForPr`: if `true`, `open pr` requires the branch to be pushed first
 - `dashboardSections`: controls which sections appear in `dashboard`
@@ -95,6 +102,8 @@ Example with a local validation command:
 .\toi.ps1 publish -Pr
 .\\toi.ps1 dashboard
 .\\toi.ps1 next
+.\\toi.ps1 note show
+.\\toi.ps1 note set "Prepare branch for login form PR"
 .\toi.ps1 summary
 .\toi.ps1 sync
 .\toi.ps1 commit "Add branch cleanup helper"

@@ -11,7 +11,13 @@
   "protectBranches": [
     "main"
   ],
-  "commitConvention": "optional",
+  "commitConvention": "required",
+  "commitScopes": [
+    "core",
+    "workflow",
+    "release"
+  ],
+  "branchNoteRequired": true,
   "qualityGateMode": "warn",
   "validationCommands": [],
   "requirePublishedForPr": true,

@@ -10,6 +10,8 @@ function Invoke-ToiCommand {
     $isPublished = Test-CurrentBranchPublished
     $status = Get-StatusSummary
     $protectedBranches = Get-ProtectedBranches
+    $note = Get-ToiBranchNote -BranchName $branch
+    $commitConvention = Get-CommitConvention
     $recommendations = New-Object System.Collections.Generic.List[string]
 
     Write-Section 'Doctor'
@@ -18,6 +20,10 @@ function Invoke-ToiCommand {
     Write-Host "Sync strategy: $(Get-SyncStrategy)"
     Write-Host "Working tree: $($status.ChangedFiles) changed file(s)"
     Write-Host "Published: $isPublished"
+    Write-Host "Commit convention: $commitConvention"
+    if ($note) {
+        Write-Host "Note: $note"
+    }
 
     if ($status.Staged -gt 0) {
         Write-Host "Staged entries: $($status.Staged)"
@@ -41,6 +47,10 @@ function Invoke-ToiCommand {
 
     if ($protectedBranches -contains $branch -and -not (Test-WorkingTreeClean)) {
         $recommendations.Add("Avoid doing feature work directly on '$branch'. Create a branch with `.\toi.ps1 start feature <name>`.")
+    }
+
+    if ((Test-BranchNoteRequired) -and $branch -ne $defaultBranch -and -not $note) {
+        $recommendations.Add('Add a branch note with `.\toi.ps1 note set <text>`.`')
     }
 
     if ($upstreamRef) {

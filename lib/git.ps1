@@ -1250,3 +1250,100 @@ function Get-ToiShipAssessment {
         quality_gate_mode = $qualityGateMode
     }
 }
+
+function Get-ToiReportModel {
+    $snapshot = Get-ToiWorkflowSnapshot
+    $nextActions = Get-ToiNextActions -Snapshot $snapshot
+    $doctorRecommendations = Get-ToiDoctorRecommendations -Snapshot $snapshot
+    $shipAssessment = Get-ToiShipAssessment -Snapshot $snapshot
+    $commitRange = if ($snapshot.Branch -ne $snapshot.DefaultBranch -and (Get-DefaultBranchComparisonRef)) {
+        Get-CommitRangeSummary -BaseRef (Get-DefaultBranchComparisonRef) -HeadRef 'HEAD'
+    }
+    else {
+        @()
+    }
+
+    return [PSCustomObject]@{
+        generated_at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+        snapshot = Convert-ToiSnapshotToJsonModel -Snapshot $snapshot
+        next_actions = @($nextActions)
+        doctor = [PSCustomObject]@{
+            recommendations = @($doctorRecommendations)
+        }
+        ship = [PSCustomObject]@{
+            blocking_issues = @($shipAssessment.blocking_issues)
+            notes = @($shipAssessment.notes)
+            commit_range = @($commitRange)
+            shippable = ($shipAssessment.blocking_issues.Count -eq 0)
+        }
+    }
+}
+
+function Convert-ToiReportToMarkdown {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Report
+    )
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('# TOI Workflow Report')
+    $lines.Add('')
+    $lines.Add("Generated: $($Report.generated_at)")
+    $lines.Add('')
+    $lines.Add('## Branch')
+    $lines.Add('')
+    $lines.Add("- Current: $($Report.snapshot.branch.current)")
+    $lines.Add("- Default: $($Report.snapshot.branch.default)")
+    $lines.Add("- Type: $(if ($Report.snapshot.branch.type) { $Report.snapshot.branch.type } else { 'n/a' })")
+    $lines.Add("- Published: $($Report.snapshot.branch.published)")
+    $lines.Add("- Commit convention: $($Report.snapshot.branch.commit_convention)")
+    if ($Report.snapshot.branch.note) {
+        $lines.Add("- Note: $($Report.snapshot.branch.note)")
+    }
+    $lines.Add('')
+    $lines.Add('## Working Tree')
+    $lines.Add('')
+    $lines.Add("- Changed files: $($Report.snapshot.working_tree.changed_files)")
+    $lines.Add("- Staged: $($Report.snapshot.working_tree.staged)")
+    $lines.Add("- Unstaged: $($Report.snapshot.working_tree.unstaged)")
+    $lines.Add("- Untracked: $($Report.snapshot.working_tree.untracked)")
+    $lines.Add('')
+    $lines.Add('## Publish')
+    $lines.Add('')
+    $lines.Add("- Upstream: $(if ($Report.snapshot.publish.upstream) { $Report.snapshot.publish.upstream } else { 'none' })")
+    if ($null -ne $Report.snapshot.publish.ahead) {
+        $lines.Add("- Ahead: $($Report.snapshot.publish.ahead)")
+    }
+    if ($null -ne $Report.snapshot.publish.behind) {
+        $lines.Add("- Behind: $($Report.snapshot.publish.behind)")
+    }
+    $lines.Add('')
+    $lines.Add('## Ship')
+    $lines.Add('')
+    $lines.Add("- Shippable: $($Report.ship.shippable)")
+    if ($Report.ship.blocking_issues.Count -gt 0) {
+        $lines.Add('- Blocking issues:')
+        foreach ($item in $Report.ship.blocking_issues) {
+            $lines.Add("  - $item")
+        }
+    }
+    if ($Report.ship.notes.Count -gt 0) {
+        $lines.Add('- Notes:')
+        foreach ($item in $Report.ship.notes) {
+            $lines.Add("  - $item")
+        }
+    }
+    $lines.Add('')
+    $lines.Add('## Next Actions')
+    $lines.Add('')
+    if ($Report.next_actions.Count -eq 0) {
+        $lines.Add('- No obvious next action.')
+    }
+    else {
+        foreach ($item in $Report.next_actions) {
+            $lines.Add("- $item")
+        }
+    }
+
+    return ($lines -join [Environment]::NewLine)
+}

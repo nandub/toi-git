@@ -22,24 +22,23 @@ jobs:
         shell: pwsh
         run: ./tests/self-check.ps1 -Json | Out-File -FilePath toi-self-check.json -Encoding utf8
 
+      - name: Capture TOI workflow report
+        shell: pwsh
+        run: ./toi.ps1 report | Out-File -FilePath toi-report.md -Encoding utf8
+
       - name: Publish job summary
         shell: pwsh
         run: |
-          $result = Get-Content -Raw -Path ./toi-self-check.json | ConvertFrom-Json
-          "## TOI Self Check" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "- Checks: $($result.summary.checks)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "- Passed: $($result.summary.passed)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "- Failed: $($result.summary.failed)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "### Results" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          foreach ($check in $result.checks) {
-            $status = if ($check.success) { "PASS" } else { "FAIL" }
-            "- [$status] $($check.name): $($check.detail)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          }
+          Get-Content -Raw -Path ./toi-report.md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
       - name: Upload TOI self-check artifact
         uses: actions/upload-artifact@v4
         with:
           name: toi-self-check
           path: toi-self-check.json
+
+      - name: Upload TOI workflow report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: toi-workflow-report
+          path: toi-report.md

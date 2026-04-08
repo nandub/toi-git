@@ -12,6 +12,8 @@ Branch: `main`
 
 ## Commits
 
+- 2d03c71 docs(release): document current-state notes mode
+- bfbaedc fix(release): correct current-state notes flow
 - 62968ee docs(maintainer): add ci reproduction and contribution guide
 - c95f8fe workflow(ci): invoke TOI scripts explicitly in Actions
 - 2606cb4 workflow(ci): emit report markdown to pipeline

@@ -44,11 +44,11 @@ function Invoke-Git {
 
         $result = @()
         if ($stdout) {
-            $result += ($stdout -split "(`r`n|`n|`r)" | Where-Object { $_ -ne '' })
+            $result += ($stdout -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
         }
 
         if ($stderr) {
-            $result += ($stderr -split "(`r`n|`n|`r)" | Where-Object { $_ -ne '' })
+            $result += ($stderr -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
         }
     }
     finally {

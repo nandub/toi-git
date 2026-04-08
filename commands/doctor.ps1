@@ -7,6 +7,7 @@ function Invoke-ToiCommand {
     $defaultBranch = Get-DefaultBranchName
     $defaultCompareRef = Get-DefaultBranchComparisonRef
     $upstreamRef = Get-UpstreamRef
+    $isPublished = Test-CurrentBranchPublished
     $status = Get-StatusSummary
     $protectedBranches = Get-ProtectedBranches
     $recommendations = New-Object System.Collections.Generic.List[string]
@@ -16,6 +17,7 @@ function Invoke-ToiCommand {
     Write-Host "Default branch: $defaultBranch"
     Write-Host "Sync strategy: $(Get-SyncStrategy)"
     Write-Host "Working tree: $($status.ChangedFiles) changed file(s)"
+    Write-Host "Published: $isPublished"
 
     if ($status.Staged -gt 0) {
         Write-Host "Staged entries: $($status.Staged)"
@@ -63,7 +65,9 @@ function Invoke-ToiCommand {
     }
     else {
         Write-WarningLine 'Current branch has no upstream.'
-        $recommendations.Add('Push with `git push -u origin <branch>` when this branch is ready.')
+        if ($branch -ne $defaultBranch) {
+            $recommendations.Add('Run `.\toi.ps1 publish` when this branch is ready for review.')
+        }
     }
 
     if ($branch -ne $defaultBranch -and $defaultCompareRef) {
@@ -71,6 +75,10 @@ function Invoke-ToiCommand {
         if ($defaultTracking -and $defaultTracking.RightAhead -gt 0) {
             Write-WarningLine "Branch is behind $defaultBranch by $($defaultTracking.RightAhead) commit(s)."
             $recommendations.Add('Rebase or sync against the default branch before shipping.')
+        }
+
+        if ($upstreamRef -and $defaultTracking -and $defaultTracking.LeftAhead -gt 0) {
+            $recommendations.Add('Open a PR with `.\toi.ps1 open pr` when the branch is ready.')
         }
     }
 

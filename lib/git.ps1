@@ -266,6 +266,40 @@ function Get-UpstreamRef {
     return ($result.Output | Select-Object -First 1).Trim()
 }
 
+function Get-BranchRemoteRef {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName,
+
+        [string]$RemoteName = 'origin'
+    )
+
+    return "$RemoteName/$BranchName"
+}
+
+function Test-RemoteBranchExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BranchName,
+
+        [string]$RemoteName = 'origin'
+    )
+
+    $remoteRef = Get-BranchRemoteRef -BranchName $BranchName -RemoteName $RemoteName
+    return (Test-RefExists -RefName "refs/remotes/$remoteRef")
+}
+
+function Test-CurrentBranchPublished {
+    $branch = Get-CurrentBranchName
+    $upstreamRef = Get-UpstreamRef
+
+    if ($upstreamRef) {
+        return $true
+    }
+
+    return (Test-RemoteBranchExists -BranchName $branch)
+}
+
 function Test-WorkingTreeClean {
     $status = Get-StatusLines | Select-Object -Skip 1
     return $status.Count -eq 0
@@ -429,4 +463,19 @@ function Get-CompareBrowseUrl {
     )
 
     return "$RepositoryUrl/compare/$BaseBranch...${HeadBranch}?expand=1"
+}
+
+function Get-PullRequestBrowseUrl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BaseBranch,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HeadBranch
+    )
+
+    return "$RepositoryUrl/compare/$BaseBranch...${HeadBranch}?expand=1&quick_pull=1"
 }

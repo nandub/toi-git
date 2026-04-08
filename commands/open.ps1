@@ -32,7 +32,7 @@ function Invoke-ToiCommand {
                 throw 'PR view is only useful from a non-default branch.'
             }
 
-            $finalUrl = Get-CompareBrowseUrl -RepositoryUrl $browseUrl -BaseBranch $defaultBranch -HeadBranch $currentBranch
+            $finalUrl = Get-PullRequestBrowseUrl -RepositoryUrl $browseUrl -BaseBranch $defaultBranch -HeadBranch $currentBranch
         }
         default {
             throw 'Usage: .\toi.ps1 open [repo|branch|compare|pr]'

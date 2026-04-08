@@ -8,12 +8,14 @@ function Invoke-ToiCommand {
     $defaultCompareRef = Get-DefaultBranchComparisonRef
     $status = Get-StatusSummary
     $upstreamRef = Get-UpstreamRef
+    $isPublished = Test-CurrentBranchPublished
     $protectedBranches = Get-ProtectedBranches
     $blockingIssues = New-Object System.Collections.Generic.List[string]
     $notes = New-Object System.Collections.Generic.List[string]
 
     Write-Section 'Ship'
     Write-Host "Branch: $branch"
+    Write-Host "Published: $isPublished"
 
     if ($protectedBranches -contains $branch) {
         $blockingIssues.Add("Refusing to ship directly from protected branch '$branch'.")
@@ -69,7 +71,7 @@ function Invoke-ToiCommand {
             $notes.Add('Default branch has no upstream configured.')
         }
         else {
-            $notes.Add('No upstream configured yet. First push should use `git push -u origin <branch>`.')
+            $notes.Add('Branch is local only. Run `.\toi.ps1 publish` to push it and set upstream.')
         }
     }
 

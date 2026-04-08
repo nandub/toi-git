@@ -191,6 +191,8 @@ function Invoke-ToiCommand {
             Write-KeyValue 'Required Pass' $gate.checks.pass
             Write-KeyValue 'Required Fail' $gate.checks.fail
             Write-KeyValue 'Required Pending' $gate.checks.pending
+            Write-KeyValue 'Next' $gate.recommended_action
+            Write-KeyValue 'Command' $gate.recommended_command
 
             if ($gate.requested_reviewers.Count -gt 0) {
                 Write-Section 'Requested Reviewers'

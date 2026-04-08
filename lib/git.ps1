@@ -916,6 +916,38 @@ function Get-ToiPullRequestGateStatus {
         $warnings.Add('No required checks were returned by GitHub.')
     }
 
+    $recommendedAction = 'review'
+    $recommendedCommand = '.\toi.ps1 pr status'
+
+    if ($blockers.Count -eq 0) {
+        $recommendedAction = 'merge'
+        $recommendedCommand = '.\toi.ps1 pr merge -Squash -DeleteBranch'
+    }
+    elseif ($pr.isDraft) {
+        $recommendedAction = 'ready'
+        $recommendedCommand = '.\toi.ps1 pr ready'
+    }
+    elseif ($requestedReviewers.Count -gt 0 -or $pr.reviewDecision -eq 'REVIEW_REQUIRED') {
+        $recommendedAction = 'wait-for-review'
+        $recommendedCommand = '.\toi.ps1 pr status'
+    }
+    elseif ($summary.pending -gt 0) {
+        $recommendedAction = 'wait-for-checks'
+        $recommendedCommand = '.\toi.ps1 pr checks -Required'
+    }
+    elseif ($summary.fail -gt 0) {
+        $recommendedAction = 'fix-checks'
+        $recommendedCommand = '.\toi.ps1 pr checks -Required'
+    }
+    elseif ($pr.mergeStateStatus -eq 'BEHIND') {
+        $recommendedAction = 'sync-branch'
+        $recommendedCommand = '.\toi.ps1 sync'
+    }
+    elseif ($pr.reviewDecision -eq 'CHANGES_REQUESTED') {
+        $recommendedAction = 'address-review'
+        $recommendedCommand = '.\toi.ps1 pr status'
+    }
+
     return [PSCustomObject]@{
         ready = ($blockers.Count -eq 0)
         branch = $pr.headRefName
@@ -938,6 +970,8 @@ function Get-ToiPullRequestGateStatus {
             cancel = $summary.cancel
             skipping = $summary.skipping
         }
+        recommended_action = $recommendedAction
+        recommended_command = $recommendedCommand
         blockers = @($blockers)
         warnings = @($warnings)
     }
@@ -2112,7 +2146,7 @@ function Get-ToiJsonCommandSchemas {
                 command = $stringArray
                 output = $stringArray
             })
-        pr_gate = (New-ToiObjectSchema -Description 'PR gate command JSON output.' -Required @('ready', 'branch', 'title', 'url', 'draft', 'state', 'review_decision', 'merge_state', 'requested_reviewers', 'reviews', 'checks', 'blockers', 'warnings') -Properties @{
+        pr_gate = (New-ToiObjectSchema -Description 'PR gate command JSON output.' -Required @('ready', 'branch', 'title', 'url', 'draft', 'state', 'review_decision', 'merge_state', 'requested_reviewers', 'reviews', 'checks', 'recommended_action', 'recommended_command', 'blockers', 'warnings') -Properties @{
                 ready = New-ToiSchemaField -Type 'boolean' -Description 'Whether the PR appears ready to merge.'
                 branch = New-ToiSchemaField -Type 'string' -Description 'Head branch name.'
                 title = New-ToiSchemaField -Type 'string' -Description 'Pull request title.'
@@ -2124,6 +2158,8 @@ function Get-ToiJsonCommandSchemas {
                 requested_reviewers = $stringArray
                 reviews = $prReviewSummarySchema
                 checks = $prChecksSummarySchema
+                recommended_action = New-ToiSchemaField -Type 'string' -Description 'Suggested next step for the PR.'
+                recommended_command = New-ToiSchemaField -Type 'string' -Description 'Suggested TOI command for the next step.'
                 blockers = $stringArray
                 warnings = $stringArray
             })

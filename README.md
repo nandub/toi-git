@@ -164,6 +164,8 @@ If you just want a fast repo check:
 .\\toi.ps1 pr merge -DryRun
 ```
 
+`pr gate` now includes a suggested next action and a TOI command to run, so it can answer "merge", "wait-for-review", "wait-for-checks", or "sync-branch" instead of only listing blockers.
+
 ### Cut A Release
 
 ```powershell

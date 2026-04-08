@@ -686,6 +686,14 @@
                                                                       "description":  "Whether the PR appears ready to merge.",
                                                                       "type":  "boolean"
                                                                   },
+                                                        "recommended_action":  {
+                                                                                   "description":  "Suggested next step for the PR.",
+                                                                                   "type":  "string"
+                                                                               },
+                                                        "recommended_command":  {
+                                                                                    "description":  "Suggested TOI command for the next step.",
+                                                                                    "type":  "string"
+                                                                                },
                                                         "requested_reviewers":  {
                                                                                     "description":  "Array of strings.",
                                                                                     "items":  {
@@ -749,6 +757,8 @@
                                                       "requested_reviewers",
                                                       "reviews",
                                                       "checks",
+                                                      "recommended_action",
+                                                      "recommended_command",
                                                       "blockers",
                                                       "warnings"
                                                   ],

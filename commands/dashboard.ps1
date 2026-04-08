@@ -56,6 +56,22 @@ function Invoke-ToiCommand {
         }
     }
 
+    if ($sections -contains 'pr' -and $snapshot.PullRequestGate) {
+        Write-Section 'Pull Request'
+        if ($snapshot.PullRequestGate.ready) {
+            Write-KeyValue 'Ready' 'True'
+        }
+        else {
+            Write-KeyValue 'Ready' 'False'
+        }
+        Write-KeyValue 'Review' $snapshot.PullRequestGate.review_decision
+        Write-KeyValue 'Merge State' $snapshot.PullRequestGate.merge_state
+        Write-KeyValue 'Approvals' $snapshot.PullRequestGate.reviews.approved
+        Write-KeyValue 'Requests' $snapshot.PullRequestGate.requested_reviewers.Count
+        Write-KeyValue 'Next' $snapshot.PullRequestGate.recommended_action
+        Write-KeyValue 'Command' $snapshot.PullRequestGate.recommended_command
+    }
+
     if ($sections -contains 'gates') {
         Write-Section 'Quality Gates'
         Write-KeyValue 'Mode' (Get-QualityGateMode)

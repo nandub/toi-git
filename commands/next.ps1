@@ -28,6 +28,9 @@ function Invoke-ToiCommand {
     elseif (-not $snapshot.ContractStatus.SnapshotMatches) {
         $message = 'Refresh the committed contract snapshot with `.\\toi.ps1 schema -WriteSnapshot`.'
     }
+    elseif ($snapshot.PullRequestGate -and $snapshot.PullRequestGate.recommended_command) {
+        $message = "PR next step: $($snapshot.PullRequestGate.recommended_command)"
+    }
     elseif ($snapshot.StackParent) {
         $message = 'Open the PR path with `.\\toi.ps1 open pr` or restack with `.\\toi.ps1 stack restack` if needed.'
     }

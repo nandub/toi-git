@@ -177,7 +177,7 @@ function Get-ToiConfig {
         qualityGateMode  = 'warn'
         validationCommands = @()
         requirePublishedForPr = $true
-        dashboardSections = @('branch', 'publish', 'stack', 'gates', 'contract', 'next')
+        dashboardSections = @('branch', 'publish', 'stack', 'pr', 'gates', 'contract', 'next')
         releaseTagPrefix = 'v'
         releaseNotesFile = 'CHANGELOG.md'
         releaseVersionPattern = '^\d+\.\d+\.\d+$'
@@ -555,6 +555,15 @@ function Get-PullRequestBrowseUrl {
 function Test-GitHubCliAvailable {
     $command = Get-Command gh -ErrorAction SilentlyContinue
     return $null -ne $command
+}
+
+function Test-GitHubCliAuthenticated {
+    if (-not (Test-GitHubCliAvailable)) {
+        return $false
+    }
+
+    $result = Invoke-GitHubCli -Arguments @('auth', 'status') -AllowFailure
+    return $result.ExitCode -eq 0
 }
 
 function Invoke-GitHubCli {
@@ -1452,6 +1461,7 @@ function Get-ToiWorkflowSnapshot {
     $commitConvention = Get-CommitConvention
     $branchType = Get-CurrentBranchType
     $contractStatus = Get-ToiContractStatus
+    $pullRequestGate = $null
 
     $upstreamTracking = $null
     if ($upstreamRef) {
@@ -1463,6 +1473,15 @@ function Get-ToiWorkflowSnapshot {
         $defaultCompareRef = Get-DefaultBranchComparisonRef
         if ($defaultCompareRef) {
             $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultCompareRef
+        }
+    }
+
+    if ($branch -ne $defaultBranch -and $published -and (Test-GitHubCliAuthenticated)) {
+        try {
+            $pullRequestGate = Get-ToiPullRequestGateStatus
+        }
+        catch {
+            $pullRequestGate = $null
         }
     }
 
@@ -1482,6 +1501,7 @@ function Get-ToiWorkflowSnapshot {
         DefaultTracking   = $defaultTracking
         RequireBranchNote = (Test-BranchNoteRequired)
         ContractStatus    = $contractStatus
+        PullRequestGate   = $pullRequestGate
     }
 }
 
@@ -1502,7 +1522,12 @@ function Get-ToiNextActions {
     }
 
     if ($Snapshot.Branch -ne $Snapshot.DefaultBranch -and $Snapshot.Published) {
-        $nextActions.Add('Open the PR path with `.\\toi.ps1 open pr`.')
+        if ($Snapshot.PullRequestGate -and $Snapshot.PullRequestGate.recommended_command) {
+            $nextActions.Add("PR next step: $($Snapshot.PullRequestGate.recommended_command)")
+        }
+        else {
+            $nextActions.Add('Open the PR path with `.\\toi.ps1 open pr`.')
+        }
     }
 
     if ($Snapshot.Branch -eq $Snapshot.DefaultBranch -and $Snapshot.Status.ChangedFiles -eq 0) {

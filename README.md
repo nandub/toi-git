@@ -247,7 +247,7 @@ Default shape:
   "qualityGateMode": "warn",
   "validationCommands": [],
   "requirePublishedForPr": true,
-  "dashboardSections": ["branch", "publish", "stack", "gates", "contract", "next"],
+  "dashboardSections": ["branch", "publish", "stack", "pr", "gates", "contract", "next"],
   "releaseTagPrefix": "v",
   "releaseNotesFile": "CHANGELOG.md",
   "releaseVersionPattern": "^\\d+\\.\\d+\\.\\d+$",

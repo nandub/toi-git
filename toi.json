@@ -21,6 +21,7 @@
     "branch",
     "publish",
     "stack",
+    "pr",
     "gates",
     "contract",
     "next"

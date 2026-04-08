@@ -26,12 +26,26 @@ If you prefer wrapper scripts in a directory on `PATH`:
 .\toi.ps1 install user-bin
 ```
 
+If you want TOI available as a PowerShell module:
+
+```powershell
+.\toi.ps1 install module
+Import-Module TOIGit -Force
+toi status
+```
+
 Useful install options:
 
 - `install profile -DryRun`: preview the profile snippet without changing your profile
 - `install profile -ProfilePath <path>`: write to a specific profile file
 - `install user-bin -DryRun`: preview the wrapper install
 - `install user-bin -TargetDir <path>`: install wrappers to a specific directory
+- `install module -DryRun`: preview the module bundle install
+- `install module -TargetDir <path>`: install the module bundle to a specific module root
+- `install status`: show the current profile, user-bin, and module install state
+- `install uninstall profile|user-bin|module`: remove a specific install mode
+
+The module package files live at [TOIGit.psd1](C:\Users\ferna\development\code\powershell\Codex\Toi\TOIGit.psd1) and [TOIGit.psm1](C:\Users\ferna\development\code\powershell\Codex\Toi\TOIGit.psm1). The module exports `Invoke-Toi` and the `toi` alias.
 
 ## Start Here
 
@@ -118,6 +132,7 @@ If you just want a fast repo check:
 - `report`: workflow report in markdown or JSON
 - `schema`: JSON contract summary for automation consumers
 - `self-check`: lightweight local verification for TOI Git
+- `install`: manage profile, user-bin, and module installation
 
 ## Common Flows
 

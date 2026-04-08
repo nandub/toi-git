@@ -907,6 +907,10 @@ function Get-ToiPullRequestChecks {
     $result = Invoke-GitHubCli -Arguments $arguments -AllowFailure
     if ($result.ExitCode -ne 0) {
         $message = if ($result.Output) { ($result.Output -join [Environment]::NewLine) } else { 'GitHub CLI command failed.' }
+        if ($message -match 'no pull requests found for branch') {
+            throw (Get-ToiMissingPullRequestMessage)
+        }
+
         if ($Required -and $message -match 'no required checks reported') {
             return @()
         }

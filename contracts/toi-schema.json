@@ -478,6 +478,14 @@
                                                                    "description":  "Whether the pull request is a draft.",
                                                                    "type":  "boolean"
                                                                },
+                                                   "latestReviews":  {
+                                                                         "description":  "Raw GitHub latest review payloads.",
+                                                                         "items":  {
+                                                                                       "description":  "Latest review item.",
+                                                                                       "type":  "object"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
                                                    "mergeStateStatus":  {
                                                                             "description":  "GitHub merge state status.",
                                                                             "type":  "string|null"
@@ -489,6 +497,14 @@
                                                    "reviewDecision":  {
                                                                           "description":  "GitHub review decision.",
                                                                           "type":  "string|null"
+                                                                      },
+                                                   "reviewRequests":  {
+                                                                          "description":  "Raw GitHub review request payloads.",
+                                                                          "items":  {
+                                                                                        "description":  "Review request item.",
+                                                                                        "type":  "object"
+                                                                                    },
+                                                                          "type":  "array"
                                                                       },
                                                    "state":  {
                                                                  "description":  "Pull request state.",
@@ -670,10 +686,37 @@
                                                                       "description":  "Whether the PR appears ready to merge.",
                                                                       "type":  "boolean"
                                                                   },
+                                                        "requested_reviewers":  {
+                                                                                    "description":  "Array of strings.",
+                                                                                    "items":  {
+                                                                                                  "type":  "string"
+                                                                                              },
+                                                                                    "type":  "array"
+                                                                                },
                                                         "review_decision":  {
                                                                                 "description":  "GitHub review decision.",
                                                                                 "type":  "string|null"
                                                                             },
+                                                        "reviews":  {
+                                                                        "description":  "Summary of latest PR reviews by state.",
+                                                                        "properties":  {
+                                                                                           "approved":  {
+                                                                                                            "type":  "number"
+                                                                                                        },
+                                                                                           "changes_requested":  {
+                                                                                                                     "type":  "number"
+                                                                                                                 },
+                                                                                           "commented":  {
+                                                                                                             "type":  "number"
+                                                                                                         }
+                                                                                       },
+                                                                        "required":  [
+                                                                                         "approved",
+                                                                                         "changes_requested",
+                                                                                         "commented"
+                                                                                     ],
+                                                                        "type":  "object"
+                                                                    },
                                                         "state":  {
                                                                       "description":  "Pull request state.",
                                                                       "type":  "string"
@@ -703,6 +746,8 @@
                                                       "state",
                                                       "review_decision",
                                                       "merge_state",
+                                                      "requested_reviewers",
+                                                      "reviews",
                                                       "checks",
                                                       "blockers",
                                                       "warnings"

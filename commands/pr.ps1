@@ -40,6 +40,8 @@ function Invoke-ToiCommand {
     switch ($action) {
         'status' {
             $pr = Get-ToiPullRequestInfo
+            $requestedReviewers = @(Get-ToiPullRequestRequestedReviewers -PullRequest $pr)
+            $reviewSummary = Get-ToiPullRequestLatestReviewSummary -PullRequest $pr
 
             if ($json) {
                 Write-Json $pr
@@ -53,8 +55,14 @@ function Invoke-ToiCommand {
             Write-KeyValue 'Draft' $pr.isDraft
             Write-KeyValue 'Review' $pr.reviewDecision
             Write-KeyValue 'Merge State' $pr.mergeStateStatus
+            Write-KeyValue 'Approvals' $reviewSummary.approved
+            Write-KeyValue 'Review Requests' $requestedReviewers.Count
             Write-KeyValue 'Branch' "$($pr.headRefName) -> $($pr.baseRefName)"
             Write-KeyValue 'URL' $pr.url
+            if ($requestedReviewers.Count -gt 0) {
+                Write-Section 'Requested Reviewers'
+                $requestedReviewers | ForEach-Object { Write-BulletLine $_ }
+            }
         }
         'checks' {
             $checks = @(Get-ToiPullRequestChecks -Required:$required)
@@ -178,9 +186,16 @@ function Invoke-ToiCommand {
             Write-KeyValue 'Draft' $gate.draft
             Write-KeyValue 'Review' $gate.review_decision
             Write-KeyValue 'Merge State' $gate.merge_state
+            Write-KeyValue 'Approvals' $gate.reviews.approved
+            Write-KeyValue 'Review Requests' $gate.requested_reviewers.Count
             Write-KeyValue 'Required Pass' $gate.checks.pass
             Write-KeyValue 'Required Fail' $gate.checks.fail
             Write-KeyValue 'Required Pending' $gate.checks.pending
+
+            if ($gate.requested_reviewers.Count -gt 0) {
+                Write-Section 'Requested Reviewers'
+                $gate.requested_reviewers | ForEach-Object { Write-BulletLine $_ }
+            }
 
             if ($gate.blockers.Count -gt 0) {
                 Write-Section 'Blockers'

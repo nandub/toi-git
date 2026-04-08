@@ -692,10 +692,72 @@ function Publish-ToiGitHubRelease {
 }
 
 function Get-ToiPullRequestInfo {
-    $fields = 'number,title,url,state,isDraft,reviewDecision,mergeStateStatus,headRefName,baseRefName'
+    $fields = 'number,title,url,state,isDraft,reviewDecision,mergeStateStatus,headRefName,baseRefName,reviewRequests,latestReviews'
     $result = Invoke-GitHubCli -Arguments @('pr', 'view', '--json', $fields)
     $jsonText = ($result.Output -join [Environment]::NewLine)
     return ($jsonText | ConvertFrom-Json)
+}
+
+function Get-ToiPullRequestRequestedReviewers {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$PullRequest
+    )
+
+    $names = New-Object System.Collections.Generic.List[string]
+    $reviewRequests = @($PullRequest.reviewRequests)
+
+    foreach ($request in $reviewRequests) {
+        $candidate = $null
+
+        if ($request.requestedReviewer) {
+            if ($request.requestedReviewer.login) {
+                $candidate = "@$($request.requestedReviewer.login)"
+            }
+            elseif ($request.requestedReviewer.name) {
+                $candidate = [string]$request.requestedReviewer.name
+            }
+        }
+
+        if (-not $candidate -and $request.requestedTeam) {
+            if ($request.requestedTeam.name) {
+                $candidate = $request.requestedTeam.name
+            }
+            elseif ($request.requestedTeam.slug) {
+                $candidate = $request.requestedTeam.slug
+            }
+        }
+
+        if (-not $candidate -and $request.name) {
+            $candidate = [string]$request.name
+        }
+
+        if (-not $candidate -and $request.login) {
+            $candidate = "@$($request.login)"
+        }
+
+        if ($candidate) {
+            $names.Add($candidate)
+        }
+    }
+
+    return @($names | Sort-Object -Unique)
+}
+
+function Get-ToiPullRequestLatestReviewSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$PullRequest
+    )
+
+    $reviews = @($PullRequest.latestReviews)
+    $states = @($reviews | ForEach-Object { $_.state } | Where-Object { $_ })
+
+    return [PSCustomObject]@{
+        approved = @($states | Where-Object { $_ -eq 'APPROVED' }).Count
+        changes_requested = @($states | Where-Object { $_ -eq 'CHANGES_REQUESTED' }).Count
+        commented = @($states | Where-Object { $_ -eq 'COMMENTED' }).Count
+    }
 }
 
 function Get-ToiPullRequestChecks {
@@ -806,6 +868,8 @@ function Get-ToiPullRequestGateStatus {
     $pr = Get-ToiPullRequestInfo
     $checks = @(Get-ToiPullRequestChecks -Required)
     $summary = Get-ToiPullRequestChecksSummary -Checks $checks
+    $requestedReviewers = @(Get-ToiPullRequestRequestedReviewers -PullRequest $pr)
+    $reviewSummary = Get-ToiPullRequestLatestReviewSummary -PullRequest $pr
     $blockers = New-Object System.Collections.Generic.List[string]
     $warnings = New-Object System.Collections.Generic.List[string]
 
@@ -820,8 +884,15 @@ function Get-ToiPullRequestGateStatus {
     if ($pr.reviewDecision -eq 'CHANGES_REQUESTED') {
         $blockers.Add('Review decision is CHANGES_REQUESTED.')
     }
+    elseif ($pr.reviewDecision -eq 'REVIEW_REQUIRED') {
+        $blockers.Add('GitHub still requires review before merge.')
+    }
     elseif (-not $pr.reviewDecision) {
         $warnings.Add('No review decision is currently available.')
+    }
+
+    if ($requestedReviewers.Count -gt 0) {
+        $blockers.Add('Pending review requests: ' + ($requestedReviewers -join ', '))
     }
 
     if ($summary.fail -gt 0) {
@@ -854,6 +925,12 @@ function Get-ToiPullRequestGateStatus {
         state = $pr.state
         review_decision = $pr.reviewDecision
         merge_state = $pr.mergeStateStatus
+        requested_reviewers = @($requestedReviewers)
+        reviews = [PSCustomObject]@{
+            approved = $reviewSummary.approved
+            changes_requested = $reviewSummary.changes_requested
+            commented = $reviewSummary.commented
+        }
         checks = [PSCustomObject]@{
             pass = $summary.pass
             fail = $summary.fail
@@ -1922,6 +1999,11 @@ function Get-ToiJsonCommandSchemas {
         cancel = $numberField
         skipping = $numberField
     }
+    $prReviewSummarySchema = New-ToiObjectSchema -Description 'Summary of latest PR reviews by state.' -Required @('approved', 'changes_requested', 'commented') -Properties @{
+        approved = $numberField
+        changes_requested = $numberField
+        commented = $numberField
+    }
 
     return [PSCustomObject]@{
         status = (New-ToiObjectSchema -Description 'Status command JSON output.' -Required @('branch', 'published', 'upstream', 'branch_line', 'staged', 'unstaged', 'untracked') -Properties @{
@@ -2004,6 +2086,8 @@ function Get-ToiJsonCommandSchemas {
                 mergeStateStatus = New-ToiSchemaField -Type 'string|null' -Description 'GitHub merge state status.'
                 headRefName = New-ToiSchemaField -Type 'string' -Description 'Head branch name.'
                 baseRefName = New-ToiSchemaField -Type 'string' -Description 'Base branch name.'
+                reviewRequests = New-ToiArraySchema -Description 'Raw GitHub review request payloads.' -Items (New-ToiSchemaField -Type 'object' -Description 'Review request item.')
+                latestReviews = New-ToiArraySchema -Description 'Raw GitHub latest review payloads.' -Items (New-ToiSchemaField -Type 'object' -Description 'Latest review item.')
             })
         pr_checks = (New-ToiObjectSchema -Description 'PR checks command JSON output.' -Required @('branch', 'required', 'summary', 'checks') -Properties @{
                 branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
@@ -2028,7 +2112,7 @@ function Get-ToiJsonCommandSchemas {
                 command = $stringArray
                 output = $stringArray
             })
-        pr_gate = (New-ToiObjectSchema -Description 'PR gate command JSON output.' -Required @('ready', 'branch', 'title', 'url', 'draft', 'state', 'review_decision', 'merge_state', 'checks', 'blockers', 'warnings') -Properties @{
+        pr_gate = (New-ToiObjectSchema -Description 'PR gate command JSON output.' -Required @('ready', 'branch', 'title', 'url', 'draft', 'state', 'review_decision', 'merge_state', 'requested_reviewers', 'reviews', 'checks', 'blockers', 'warnings') -Properties @{
                 ready = New-ToiSchemaField -Type 'boolean' -Description 'Whether the PR appears ready to merge.'
                 branch = New-ToiSchemaField -Type 'string' -Description 'Head branch name.'
                 title = New-ToiSchemaField -Type 'string' -Description 'Pull request title.'
@@ -2037,6 +2121,8 @@ function Get-ToiJsonCommandSchemas {
                 state = New-ToiSchemaField -Type 'string' -Description 'Pull request state.'
                 review_decision = New-ToiSchemaField -Type 'string|null' -Description 'GitHub review decision.'
                 merge_state = New-ToiSchemaField -Type 'string|null' -Description 'GitHub merge state.'
+                requested_reviewers = $stringArray
+                reviews = $prReviewSummarySchema
                 checks = $prChecksSummarySchema
                 blockers = $stringArray
                 warnings = $stringArray

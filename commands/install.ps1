@@ -248,10 +248,12 @@ function Invoke-ToiCommand {
         $existingContent = ''
         $currentHostProfile = $PROFILE.CurrentUserCurrentHost
         $fellBackFromSignedProfile = $false
+        $reloadCommand = '. $PROFILE'
 
         if (-not $profilePath -and $currentHostProfile -and (Test-Path -LiteralPath $currentHostProfile) -and (Test-ProfileHasSignatureBlock -Path $currentHostProfile) -and
             -not [string]::Equals($resolvedProfilePath, $currentHostProfile, [System.StringComparison]::OrdinalIgnoreCase)) {
             $fellBackFromSignedProfile = $true
+            $reloadCommand = ". '$resolvedProfilePath'"
         }
 
         if (Test-Path -LiteralPath $resolvedProfilePath) {
@@ -299,7 +301,7 @@ function Invoke-ToiCommand {
         if ($fellBackFromSignedProfile) {
             Write-WarningLine "Detected a signed current-host profile at '$currentHostProfile'. Installed TOI into CurrentUserAllHosts instead."
         }
-        Write-InfoLine 'Open a new shell or run: . $PROFILE'
+        Write-InfoLine "Open a new shell or run: $reloadCommand"
         Write-InfoLine 'Then you can use: toi status'
     }
 

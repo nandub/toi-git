@@ -12,6 +12,12 @@ Branch: `main`
 
 ## Commits
 
+- 12e29fc ux(pr): report missing pull requests as normal state
+- 478925b fix(pr): clarify missing pull request in checks
+- 56cb193 fix(pr): improve no-pr and no-check handling on main
+- fd1303c feature/pr flow smoke (#1)
+- 191b2ad docs(changelog): refresh current-state snapshot
+- a7f18e2 test(release): cover current-state notes flow
 - 2d03c71 docs(release): document current-state notes mode
 - bfbaedc fix(release): correct current-state notes flow
 - 62968ee docs(maintainer): add ci reproduction and contribution guide

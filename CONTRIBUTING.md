@@ -40,8 +40,21 @@ For those paths:
 - `gh.exe` must be available on `PATH`
 - `gh auth status` should be clean
 - the current branch should have a live PR when testing PR flows
+- on branches without a PR, TOI should report a normal informational state instead of surfacing raw `gh` errors
 
 Local smoke coverage intentionally avoids requiring a live authenticated PR so CI stays stable.
+
+Useful live smoke path:
+
+```powershell
+.\toi.ps1 start feature <name>
+.\toi.ps1 ship
+.\toi.ps1 publish -Pr
+.\toi.ps1 pr status
+.\toi.ps1 pr checks -Required
+.\toi.ps1 pr gate
+.\toi.ps1 review
+```
 
 ## Contracts
 

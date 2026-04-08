@@ -166,6 +166,7 @@ If you just want a fast repo check:
 ```
 
 `pr gate` now includes a suggested next action and a TOI command to run, so it can answer "merge", "wait-for-review", "wait-for-checks", or "sync-branch" instead of only listing blockers.
+When the current branch has no PR, the PR-oriented commands now report that as normal informational state instead of throwing raw `gh` errors.
 
 ### Cut A Release
 
@@ -332,6 +333,8 @@ More examples:
 .\\toi.ps1 hotfix start payment-timeout
 .\\toi.ps1 release publish 1.4.0 -DryRun
 ```
+
+If you run `pr status`, `pr checks`, `pr gate`, or `review` on `main` or another branch without an open PR, TOI reports that there is no PR for the current branch and points you back to `.\toi.ps1 publish -Pr` or `gh pr create --fill --web`.
 
 TOI Git stores stack parent metadata and branch notes under the local `.git` directory so this workflow state does not pollute tracked files.
 

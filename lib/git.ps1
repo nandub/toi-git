@@ -624,12 +624,12 @@ function Test-GitHubCliAuthenticated {
     }
 
     $statusResult = Invoke-GitHubCli -Arguments @('auth', 'status') -AllowFailure
-    if ($statusResult.ExitCode -ne 0) {
+    if ($statusResult.ExitCode -ne 0 -or (Test-ToiGitHubAuthError -Message ($statusResult.Output -join [Environment]::NewLine))) {
         return $false
     }
 
     $graphqlResult = Invoke-GitHubCli -Arguments @('api', 'graphql', '-f', 'query=query { viewer { login } }') -AllowFailure
-    return $graphqlResult.ExitCode -eq 0
+    return ($graphqlResult.ExitCode -eq 0 -and -not (Test-ToiGitHubAuthError -Message ($graphqlResult.Output -join [Environment]::NewLine)))
 }
 
 function Test-ToiGitHubAuthError {
@@ -641,7 +641,7 @@ function Test-ToiGitHubAuthError {
         return $false
     }
 
-    return $Message -match 'Requires authentication|gh\.exe is not authenticated|HTTP 401'
+    return $Message -match 'Requires authentication|gh\.exe is not authenticated|HTTP 401|set the GH_TOKEN environment variable|GH_TOKEN'
 }
 
 function Invoke-GitHubCli {

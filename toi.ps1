@@ -20,6 +20,10 @@ $commandMap = @{
     'sync'         = Join-Path $root 'commands\sync.ps1'
     'commit'       = Join-Path $root 'commands\commit.ps1'
     'branch-clean' = Join-Path $root 'commands\branch-clean.ps1'
+    'save'         = Join-Path $root 'commands\save.ps1'
+    'undo'         = Join-Path $root 'commands\undo.ps1'
+    'open'         = Join-Path $root 'commands\open.ps1'
+    'worktree'     = Join-Path $root 'commands\worktree.ps1'
     'help'         = $null
 }
 
@@ -33,6 +37,10 @@ function Show-Help {
     Write-Host '  sync          Fetch remotes and show branch tracking state'
     Write-Host '  commit        Create a commit with a message'
     Write-Host '  branch-clean  List or delete merged local branches'
+    Write-Host '  save          Stage everything and create a checkpoint commit'
+    Write-Host '  undo          Undo the last commit with a safe reset mode'
+    Write-Host '  open          Open the repository remote in a browser'
+    Write-Host '  worktree      List or add Git worktrees'
 }
 
 if (-not $Command) {

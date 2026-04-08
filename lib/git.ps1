@@ -10,8 +10,19 @@ function Invoke-Git {
     $stderrPath = [System.IO.Path]::GetTempFileName()
 
     try {
+        $quotedArguments = $GitArguments | ForEach-Object {
+            if ($_ -match '[\s"]') {
+                '"' + ($_ -replace '(\\*)"', '$1$1\"') + '"'
+            }
+            else {
+                $_
+            }
+        }
+
+        $argumentString = $quotedArguments -join ' '
+
         $process = Start-Process -FilePath 'git' `
-            -ArgumentList $GitArguments `
+            -ArgumentList $argumentString `
             -NoNewWindow `
             -Wait `
             -PassThru `
@@ -79,4 +90,49 @@ function Get-DefaultProtectedBranches {
 function Test-HasCommits {
     $result = Invoke-Git -GitArguments @('rev-parse', '--verify', 'HEAD') -AllowFailure
     return $result.ExitCode -eq 0
+}
+
+function Get-CommitCount {
+    if (-not (Test-HasCommits)) {
+        return 0
+    }
+
+    $result = Invoke-Git -GitArguments @('rev-list', '--count', 'HEAD')
+    return [int](($result.Output | Select-Object -First 1).Trim())
+}
+
+function Get-RepositoryRoot {
+    $result = Invoke-Git -GitArguments @('rev-parse', '--show-toplevel')
+    return ($result.Output | Select-Object -First 1).Trim()
+}
+
+function Get-RemoteUrl {
+    param(
+        [string]$RemoteName = 'origin'
+    )
+
+    $result = Invoke-Git -GitArguments @('remote', 'get-url', $RemoteName) -AllowFailure
+
+    if ($result.ExitCode -ne 0) {
+        return $null
+    }
+
+    return ($result.Output | Select-Object -First 1).Trim()
+}
+
+function Convert-RemoteToBrowseUrl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RemoteUrl
+    )
+
+    if ($RemoteUrl -match '^git@github\.com:(.+?)(\.git)?$') {
+        return "https://github.com/$($matches[1])"
+    }
+
+    if ($RemoteUrl -match '^https://github\.com/(.+?)(\.git)?$') {
+        return "https://github.com/$($matches[1])"
+    }
+
+    return $RemoteUrl -replace '\.git$', ''
 }

@@ -115,7 +115,6 @@ If you just want a fast repo check:
 - `doctor`: inspect repo state and suggest next actions
 - `ship`: assess whether a branch is ready for push or PR
 - `publish`: push the current branch and print or open the PR path
-- `pr`: inspect the current pull request, checks, and ready state with `gh`
 - `pr`: inspect, gate, ready, and merge the current pull request with `gh`
 - `review`: summarize review pressure, requested reviewers, and next action
 - `open`: open the repo, branch, compare view, or PR path in a browser or with `gh`
@@ -232,6 +231,12 @@ GitHub Actions currently does this on pushes to `main` and on pull requests:
 - uploads the stable JSON contract artifact from `schema -Json -Snapshot`
 - publishes the markdown workflow report as the job summary
 
+Local reproduction for those capture steps:
+
+```powershell
+.\tests\ci-artifacts.ps1
+```
+
 ## Config
 
 TOI Git reads `toi.json` from the repository root.
@@ -325,4 +330,5 @@ More examples:
 TOI Git stores stack parent metadata and branch notes under the local `.git` directory so this workflow state does not pollute tracked files.
 
 There is also a lightweight wrapper at [tests/self-check.ps1](C:\Users\ferna\development\code\powershell\Codex\Toi\tests\self-check.ps1) for running the built-in verification flow.
+Maintainer notes live in [CONTRIBUTING.md](C:\Users\ferna\development\code\powershell\Codex\Toi\CONTRIBUTING.md).
 

@@ -112,4 +112,4 @@ Example with a local validation command:
 
 Run the command from inside a Git repository.
 
-TOI Git also stores explicit stack parent metadata in [.toi-stack.json](C:\Users\ferna\development\code\powershell\Codex\Toi\.toi-stack.json) so stacked branches can be restacked against their recorded parent instead of always rebasing onto `main`.
+TOI Git also stores explicit stack parent metadata in the local `.git` directory so stacked branches can be restacked against their recorded parent without polluting tracked files.

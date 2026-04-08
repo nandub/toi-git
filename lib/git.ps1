@@ -577,8 +577,9 @@ function Invoke-ToiValidationSuite {
 }
 
 function Get-ToiStackMetadataPath {
-    $repoRoot = Get-RepositoryRoot
-    return (Join-Path $repoRoot '.toi-stack.json')
+    $gitDirResult = Invoke-Git -GitArguments @('rev-parse', '--git-dir')
+    $gitDir = ($gitDirResult.Output | Select-Object -First 1).Trim()
+    return (Join-Path $gitDir 'toi-stack.json')
 }
 
 function Get-ToiStackMetadata {
@@ -612,6 +613,11 @@ function Save-ToiStackMetadata {
     )
 
     $path = Get-ToiStackMetadataPath
+    $directory = Split-Path -Parent $path
+    if (-not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
     $json = $Metadata | ConvertTo-Json -Depth 10
     Set-Content -LiteralPath $path -Value $json
 }

@@ -87,6 +87,16 @@ function Invoke-ToiCommand {
             Write-KeyValue 'Cancel' $summary.cancel
             Write-KeyValue 'Skip' $summary.skipping
 
+            if ($checks.Count -eq 0) {
+                if ($required) {
+                    Write-InfoLine 'No required checks are configured for this pull request.'
+                }
+                else {
+                    Write-InfoLine 'No checks were returned for this pull request.'
+                }
+                return
+            }
+
             foreach ($check in $checks) {
                 $tone = switch ($check.bucket) {
                     'pass' { 'good' }

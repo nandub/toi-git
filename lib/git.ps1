@@ -718,6 +718,18 @@ function Open-ToiPullRequest {
     }
 }
 
+function Get-ToiMissingPullRequestMessage {
+    param(
+        [string]$BranchName
+    )
+
+    if (-not $BranchName) {
+        $BranchName = Get-CurrentBranchName
+    }
+
+    return "No pull request exists for branch '$BranchName'. Create one from a feature branch with '.\toi.ps1 publish -Pr' or 'gh pr create --fill --web'."
+}
+
 function Publish-ToiGitHubRelease {
     param(
         [Parameter(Mandatory = $true)]
@@ -763,7 +775,16 @@ function Publish-ToiGitHubRelease {
 
 function Get-ToiPullRequestInfo {
     $fields = 'number,title,url,state,isDraft,reviewDecision,mergeStateStatus,headRefName,baseRefName,reviewRequests,latestReviews'
-    $result = Invoke-GitHubCli -Arguments @('pr', 'view', '--json', $fields)
+    $result = Invoke-GitHubCli -Arguments @('pr', 'view', '--json', $fields) -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        $message = if ($result.Output) { ($result.Output -join [Environment]::NewLine) } else { 'GitHub CLI command failed.' }
+        if ($message -match 'no pull requests found for branch') {
+            throw (Get-ToiMissingPullRequestMessage)
+        }
+
+        throw $message
+    }
+
     $jsonText = ($result.Output -join [Environment]::NewLine)
     return ($jsonText | ConvertFrom-Json)
 }
@@ -836,9 +857,13 @@ function Get-ToiPullRequestLatestReviewDetails {
         [psobject]$PullRequest
     )
 
-    $items = New-Object System.Collections.Generic.List[object]
+    $items = @()
 
     foreach ($review in @($PullRequest.latestReviews)) {
+        if (-not $review) {
+            continue
+        }
+
         $reviewer = $null
         if ($review.author) {
             if ($review.author.login) {
@@ -847,16 +872,25 @@ function Get-ToiPullRequestLatestReviewDetails {
             elseif ($review.author.name) {
                 $reviewer = [string]$review.author.name
             }
+            elseif ($review.author -is [string]) {
+                $reviewer = [string]$review.author
+            }
+        }
+        elseif ($review.authorLogin) {
+            $reviewer = "@$($review.authorLogin)"
+        }
+        elseif ($review.authorName) {
+            $reviewer = [string]$review.authorName
         }
 
         if (-not $reviewer) {
             $reviewer = 'unknown'
         }
 
-        $items.Add([PSCustomObject]@{
+        $items += [PSCustomObject]@{
             reviewer = $reviewer
-            state = [string]$review.state
-        })
+            state = if ($review.state) { [string]$review.state } else { 'UNKNOWN' }
+        }
     }
 
     return @($items)
@@ -870,7 +904,16 @@ function Get-ToiPullRequestChecks {
         $arguments += '--required'
     }
 
-    $result = Invoke-GitHubCli -Arguments $arguments
+    $result = Invoke-GitHubCli -Arguments $arguments -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        $message = if ($result.Output) { ($result.Output -join [Environment]::NewLine) } else { 'GitHub CLI command failed.' }
+        if ($Required -and $message -match 'no required checks reported') {
+            return @()
+        }
+
+        throw $message
+    }
+
     $jsonText = ($result.Output -join [Environment]::NewLine)
     $parsed = $jsonText | ConvertFrom-Json
 
@@ -884,6 +927,7 @@ function Get-ToiPullRequestChecks {
 function Get-ToiPullRequestChecksSummary {
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [object[]]$Checks
     )
 

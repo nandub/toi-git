@@ -121,7 +121,7 @@ function Invoke-ToiCommand {
         }
     }
     else {
-        $pushResult = Invoke-Git -GitArguments $gitArguments
+        $pushResult = Invoke-GitInteractive -GitArguments $gitArguments
     }
 
     if (-not $json) {

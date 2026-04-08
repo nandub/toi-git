@@ -70,6 +70,52 @@ function Invoke-Git {
     }
 }
 
+function Invoke-GitInteractive {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$GitArguments,
+
+        [switch]$AllowFailure
+    )
+
+    $configuredSshCommand = git config --global --get core.sshCommand 2>$null
+    $previousSshCommand = $null
+    $hadSshCommand = $false
+
+    if (-not $configuredSshCommand) {
+        if (Test-Path Env:GIT_SSH_COMMAND) {
+            $previousSshCommand = $env:GIT_SSH_COMMAND
+            $hadSshCommand = $true
+        }
+
+        $env:GIT_SSH_COMMAND = 'C:/Windows/System32/OpenSSH/ssh.exe'
+    }
+
+    try {
+        & git @GitArguments
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        if (-not $configuredSshCommand) {
+            if ($hadSshCommand) {
+                $env:GIT_SSH_COMMAND = $previousSshCommand
+            }
+            else {
+                Remove-Item Env:GIT_SSH_COMMAND -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
+    if (-not $AllowFailure -and $exitCode -ne 0) {
+        throw "Git command failed with exit code $exitCode."
+    }
+
+    return [PSCustomObject]@{
+        Output   = @()
+        ExitCode = $exitCode
+    }
+}
+
 function Test-InGitRepository {
     $result = Invoke-Git -GitArguments @('rev-parse', '--is-inside-work-tree') -AllowFailure
     return [PSCustomObject]@{

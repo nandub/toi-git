@@ -20,32 +20,36 @@ function Invoke-Git {
         }
 
         $argumentString = $quotedArguments -join ' '
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = 'git'
+        $startInfo.Arguments = $argumentString
+        $startInfo.UseShellExecute = $false
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $startInfo.CreateNoWindow = $true
 
-        $process = Start-Process -FilePath 'git' `
-            -ArgumentList $argumentString `
-            -NoNewWindow `
-            -Wait `
-            -PassThru `
-            -RedirectStandardOutput $stdoutPath `
-            -RedirectStandardError $stderrPath
+        $configuredSshCommand = git config --global --get core.sshCommand 2>$null
+        if (-not $configuredSshCommand) {
+            $startInfo.EnvironmentVariables['GIT_SSH_COMMAND'] = 'C:/Windows/System32/OpenSSH/ssh.exe'
+        }
 
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        [void]$process.Start()
+
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
         $exitCode = $process.ExitCode
 
-        $stdoutLines = if (Test-Path -LiteralPath $stdoutPath) {
-            @(Get-Content -LiteralPath $stdoutPath)
-        }
-        else {
-            @()
+        $result = @()
+        if ($stdout) {
+            $result += ($stdout -split "(`r`n|`n|`r)" | Where-Object { $_ -ne '' })
         }
 
-        $stderrLines = if (Test-Path -LiteralPath $stderrPath) {
-            @(Get-Content -LiteralPath $stderrPath)
+        if ($stderr) {
+            $result += ($stderr -split "(`r`n|`n|`r)" | Where-Object { $_ -ne '' })
         }
-        else {
-            @()
-        }
-
-        $result = @($stdoutLines + $stderrLines)
     }
     finally {
         Remove-Item -LiteralPath $stdoutPath, $stderrPath -ErrorAction SilentlyContinue

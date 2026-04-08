@@ -131,6 +131,7 @@ If you just want a fast repo check:
 ### Automation And Diagnostics
 
 - `dashboard`: consolidated workflow overview
+- `version`: module, tag, and current commit version info
 - `report`: workflow report in markdown or JSON
 - `schema`: JSON contract summary for automation consumers
 - `self-check`: lightweight local verification for TOI Git
@@ -318,6 +319,7 @@ More examples:
 .\\toi.ps1 pr merge -Squash -DeleteBranch
 .\\toi.ps1 pr merge -Auto
 .\\toi.ps1 dashboard
+.\\toi.ps1 version
 .\\toi.ps1 next
 .\\toi.ps1 branch-clean
 .\\toi.ps1 branch-clean -Apply

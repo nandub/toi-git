@@ -15,6 +15,17 @@ function Invoke-Toi {
     & $script:ToiEntryPoint @Arguments
 }
 
+function Get-ToiVersion {
+    [CmdletBinding()]
+    param()
+
+    if (-not (Test-Path -LiteralPath $script:ToiEntryPoint)) {
+        throw "Missing TOI entrypoint: $script:ToiEntryPoint"
+    }
+
+    & $script:ToiEntryPoint version -Json | ConvertFrom-Json
+}
+
 Set-Alias -Name toi -Value Invoke-Toi
 
-Export-ModuleMember -Function Invoke-Toi -Alias toi
+Export-ModuleMember -Function Invoke-Toi, Get-ToiVersion -Alias toi

@@ -172,6 +172,7 @@ function Invoke-ToiCommand {
         @{ Name = 'Help';      Args = @();            TimeoutSeconds = 10 },
         @{ Name = 'Status';    Args = @('status');    TimeoutSeconds = 15 },
         @{ Name = 'Dashboard'; Args = @('dashboard'); TimeoutSeconds = 20 },
+        @{ Name = 'Version';   Args = @('version');   TimeoutSeconds = 15 },
         @{ Name = 'Install';   Args = @('install', 'profile', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Install Status'; Args = @('install', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 },
@@ -188,6 +189,43 @@ function Invoke-ToiCommand {
     if (-not $publishDryRunResult.Success) {
         Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $publishDryRunResult.Detail
     }
+
+    if (Test-GitHubCliAvailable -and (Test-GitHubCliAuthenticated)) {
+        $noPrChecks = @(
+            @{ Name = 'PR Checks No PR'; Args = @('pr', 'checks', '-Required'); Expected = 'No pull request exists for branch' },
+            @{ Name = 'PR Gate No PR'; Args = @('pr', 'gate'); Expected = 'No pull request exists for branch' },
+            @{ Name = 'Review No PR'; Args = @('review'); Expected = 'No pull request exists for branch' }
+        )
+
+        foreach ($noPrCheck in $noPrChecks) {
+            $result = Invoke-CommandCheck -Name $noPrCheck.Name -CommandArgs $noPrCheck.Args -TimeoutSeconds 20
+            if (-not $result.Success) {
+                if (Test-ToiGitHubAuthError -Message $result.Detail) {
+                    Add-CheckResult -Name $noPrCheck.Name -Success $true -Detail 'Skipped; gh auth is not available in this shell.'
+                    continue
+                }
+
+                Add-CheckResult -Name $noPrCheck.Name -Success $false -Detail $result.Detail
+                continue
+            }
+
+            if ($result.Stdout -notmatch [regex]::Escape($noPrCheck.Expected)) {
+                Add-CheckResult -Name $noPrCheck.Name -Success $false -Detail "Expected informational output containing '$($noPrCheck.Expected)'."
+                continue
+            }
+
+            Add-CheckResult -Name $noPrCheck.Name -Success $true -Detail 'Command reported a normal no-PR informational state.'
+        }
+    }
+    else {
+        Add-CheckResult -Name 'PR Checks No PR' -Success $true -Detail 'Skipped; gh auth is not available in this shell.'
+        Add-CheckResult -Name 'PR Gate No PR' -Success $true -Detail 'Skipped; gh auth is not available in this shell.'
+        Add-CheckResult -Name 'Review No PR' -Success $true -Detail 'Skipped; gh auth is not available in this shell.'
+    }
+
+    if (-not $publishDryRunResult.Success) {
+        Add-CheckResult -Name 'Publish Dry Run JSON Contract' -Success $false -Detail $publishDryRunResult.Detail
+    }
     else {
         try {
             $publishDryRunParsed = $publishDryRunResult.Stdout | ConvertFrom-Json
@@ -195,10 +233,10 @@ function Invoke-ToiCommand {
                 throw "Missing field 'branch'."
             }
 
-            Add-CheckResult -Name 'Publish Dry Run JSON' -Success $true -Detail 'Publish dry-run JSON returned a structured response.'
+            Add-CheckResult -Name 'Publish Dry Run JSON Contract' -Success $true -Detail 'Publish dry-run JSON returned a structured response.'
         }
         catch {
-            Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $_.Exception.Message
+            Add-CheckResult -Name 'Publish Dry Run JSON Contract' -Success $false -Detail $_.Exception.Message
         }
     }
 
@@ -247,6 +285,7 @@ function Invoke-ToiCommand {
     $jsonChecks = @(
         @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published'); SchemaKey = 'status' },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },
+        @{ Name = 'Version JSON'; Args = @('version', '-Json'); TimeoutSeconds = 15; Required = @('module_version', 'latest_tag'); SchemaKey = $null },
         @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship'); SchemaKey = 'report' },
         @{ Name = 'Schema JSON'; Args = @('schema', '-Json'); TimeoutSeconds = 20; Required = @('contract_version', 'commands') }
     )

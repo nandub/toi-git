@@ -623,8 +623,25 @@ function Test-GitHubCliAuthenticated {
         return $false
     }
 
-    $result = Invoke-GitHubCli -Arguments @('auth', 'status') -AllowFailure
-    return $result.ExitCode -eq 0
+    $statusResult = Invoke-GitHubCli -Arguments @('auth', 'status') -AllowFailure
+    if ($statusResult.ExitCode -ne 0) {
+        return $false
+    }
+
+    $graphqlResult = Invoke-GitHubCli -Arguments @('api', 'graphql', '-f', 'query=query { viewer { login } }') -AllowFailure
+    return $graphqlResult.ExitCode -eq 0
+}
+
+function Test-ToiGitHubAuthError {
+    param(
+        [string]$Message
+    )
+
+    if (-not $Message) {
+        return $false
+    }
+
+    return $Message -match 'Requires authentication|gh\.exe is not authenticated|HTTP 401'
 }
 
 function Invoke-GitHubCli {
@@ -1979,7 +1996,11 @@ function Convert-ToiReportToMarkdown {
     $lines.Add('')
     $lines.Add("- Current: $($Report.snapshot.branch.current)")
     $lines.Add("- Default: $($Report.snapshot.branch.default)")
-    $lines.Add("- Type: $(if ($Report.snapshot.branch.type) { $Report.snapshot.branch.type } else { 'n/a' })")
+    $branchTypeDisplay = 'n/a'
+    if ($Report.snapshot.branch.type) {
+        $branchTypeDisplay = $Report.snapshot.branch.type
+    }
+    $lines.Add("- Type: $branchTypeDisplay")
     $lines.Add("- Published: $($Report.snapshot.branch.published)")
     $lines.Add("- Commit convention: $($Report.snapshot.branch.commit_convention)")
     if ($Report.snapshot.branch.note) {
@@ -1995,7 +2016,11 @@ function Convert-ToiReportToMarkdown {
     $lines.Add('')
     $lines.Add('## Publish')
     $lines.Add('')
-    $lines.Add("- Upstream: $(if ($Report.snapshot.publish.upstream) { $Report.snapshot.publish.upstream } else { 'none' })")
+    $upstreamDisplay = 'none'
+    if ($Report.snapshot.publish.upstream) {
+        $upstreamDisplay = $Report.snapshot.publish.upstream
+    }
+    $lines.Add("- Upstream: $upstreamDisplay")
     if ($null -ne $Report.snapshot.publish.ahead) {
         $lines.Add("- Ahead: $($Report.snapshot.publish.ahead)")
     }

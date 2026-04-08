@@ -16,10 +16,15 @@ function Invoke-ToiCommand {
     }
 
     if ($sections -contains 'branch') {
+        $branchTypeDisplay = 'n/a'
+        if ($snapshot.BranchType) {
+            $branchTypeDisplay = $snapshot.BranchType
+        }
+
         Write-Section 'Branch'
         Write-KeyValue 'Current' $snapshot.Branch
         Write-KeyValue 'Default' $snapshot.DefaultBranch
-        Write-KeyValue 'Type' $(if ($snapshot.BranchType) { $snapshot.BranchType } else { 'n/a' })
+        Write-KeyValue 'Type' $branchTypeDisplay
         Write-KeyValue 'Published' $snapshot.Published
         Write-KeyValue 'Working tree' "$($snapshot.Status.ChangedFiles) changed file(s)"
         Write-KeyValue 'Commit style' $snapshot.CommitConvention

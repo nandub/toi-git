@@ -7,7 +7,7 @@
     Copyright = '(c) TOI'
     Description = 'PowerShell workflow assistant for modern Git with typed branches, quality gates, and GitHub-aware flows.'
     PowerShellVersion = '5.1'
-    FunctionsToExport = @('Invoke-Toi')
+    FunctionsToExport = @('Invoke-Toi', 'Get-ToiVersion')
     AliasesToExport = @('toi')
     CmdletsToExport = @()
     VariablesToExport = @()

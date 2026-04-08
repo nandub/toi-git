@@ -41,6 +41,34 @@
                                                                                       ],
                                                                          "type":  "object"
                                                                      },
+                                                          "contract":  {
+                                                                           "description":  "Contract snapshot status.",
+                                                                           "properties":  {
+                                                                                              "path":  {
+                                                                                                           "description":  "Path to the committed contract snapshot.",
+                                                                                                           "type":  "string"
+                                                                                                       },
+                                                                                              "reason":  {
+                                                                                                             "description":  "Human-readable contract status.",
+                                                                                                             "type":  "string"
+                                                                                                         },
+                                                                                              "snapshot_matches":  {
+                                                                                                                       "description":  "Whether the committed snapshot matches the current contract output.",
+                                                                                                                       "type":  "boolean"
+                                                                                                                   },
+                                                                                              "version":  {
+                                                                                                              "description":  "Current contract version.",
+                                                                                                              "type":  "string"
+                                                                                                          }
+                                                                                          },
+                                                                           "required":  [
+                                                                                            "version",
+                                                                                            "snapshot_matches",
+                                                                                            "reason",
+                                                                                            "path"
+                                                                                        ],
+                                                                           "type":  "object"
+                                                                       },
                                                           "next_actions":  {
                                                                                "description":  "Array of strings.",
                                                                                "items":  {
@@ -182,6 +210,7 @@
                                                         "stack",
                                                         "quality_gates",
                                                         "policy",
+                                                        "contract",
                                                         "next_actions"
                                                     ],
                                        "type":  "object"
@@ -227,6 +256,34 @@
                                                                                    ],
                                                                       "type":  "object"
                                                                   },
+                                                       "contract":  {
+                                                                        "description":  "Contract snapshot status.",
+                                                                        "properties":  {
+                                                                                           "path":  {
+                                                                                                        "description":  "Path to the committed contract snapshot.",
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                           "reason":  {
+                                                                                                          "description":  "Human-readable contract status.",
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                           "snapshot_matches":  {
+                                                                                                                    "description":  "Whether the committed snapshot matches the current contract output.",
+                                                                                                                    "type":  "boolean"
+                                                                                                                },
+                                                                                           "version":  {
+                                                                                                           "description":  "Current contract version.",
+                                                                                                           "type":  "string"
+                                                                                                       }
+                                                                                       },
+                                                                        "required":  [
+                                                                                         "version",
+                                                                                         "snapshot_matches",
+                                                                                         "reason",
+                                                                                         "path"
+                                                                                     ],
+                                                                        "type":  "object"
+                                                                    },
                                                        "policy":  {
                                                                       "description":  "Active workflow policy flags.",
                                                                       "properties":  {
@@ -368,6 +425,7 @@
                                                      "stack",
                                                      "quality_gates",
                                                      "policy",
+                                                     "contract",
                                                      "recommendations"
                                                  ],
                                     "type":  "object"
@@ -379,6 +437,14 @@
                                                                     "description":  "Current branch name.",
                                                                     "type":  "string"
                                                                 },
+                                                     "contract_snapshot_matches":  {
+                                                                                       "description":  "Whether the committed contract snapshot matches current output.",
+                                                                                       "type":  "boolean"
+                                                                                   },
+                                                     "contract_version":  {
+                                                                              "description":  "Current contract version.",
+                                                                              "type":  "string"
+                                                                          },
                                                      "message":  {
                                                                      "description":  "Single recommended next action.",
                                                                      "type":  "string"
@@ -391,7 +457,9 @@
                                   "required":  [
                                                    "branch",
                                                    "message",
-                                                   "published"
+                                                   "published",
+                                                   "contract_version",
+                                                   "contract_snapshot_matches"
                                                ],
                                   "type":  "object"
                               },
@@ -493,6 +561,34 @@
                      "report":  {
                                     "description":  "Report command JSON output.",
                                     "properties":  {
+                                                       "contract":  {
+                                                                        "description":  "Contract snapshot status.",
+                                                                        "properties":  {
+                                                                                           "path":  {
+                                                                                                        "description":  "Path to the committed contract snapshot.",
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                           "reason":  {
+                                                                                                          "description":  "Human-readable contract status.",
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                           "snapshot_matches":  {
+                                                                                                                    "description":  "Whether the committed snapshot matches the current contract output.",
+                                                                                                                    "type":  "boolean"
+                                                                                                                },
+                                                                                           "version":  {
+                                                                                                           "description":  "Current contract version.",
+                                                                                                           "type":  "string"
+                                                                                                       }
+                                                                                       },
+                                                                        "required":  [
+                                                                                         "version",
+                                                                                         "snapshot_matches",
+                                                                                         "reason",
+                                                                                         "path"
+                                                                                     ],
+                                                                        "type":  "object"
+                                                                    },
                                                        "doctor":  {
                                                                       "description":  "Doctor recommendations.",
                                                                       "properties":  {
@@ -596,6 +692,34 @@
                                                                                                                        ],
                                                                                                           "type":  "object"
                                                                                                       },
+                                                                                           "contract":  {
+                                                                                                            "description":  "Contract snapshot status.",
+                                                                                                            "properties":  {
+                                                                                                                               "path":  {
+                                                                                                                                            "description":  "Path to the committed contract snapshot.",
+                                                                                                                                            "type":  "string"
+                                                                                                                                        },
+                                                                                                                               "reason":  {
+                                                                                                                                              "description":  "Human-readable contract status.",
+                                                                                                                                              "type":  "string"
+                                                                                                                                          },
+                                                                                                                               "snapshot_matches":  {
+                                                                                                                                                        "description":  "Whether the committed snapshot matches the current contract output.",
+                                                                                                                                                        "type":  "boolean"
+                                                                                                                                                    },
+                                                                                                                               "version":  {
+                                                                                                                                               "description":  "Current contract version.",
+                                                                                                                                               "type":  "string"
+                                                                                                                                           }
+                                                                                                                           },
+                                                                                                            "required":  [
+                                                                                                                             "version",
+                                                                                                                             "snapshot_matches",
+                                                                                                                             "reason",
+                                                                                                                             "path"
+                                                                                                                         ],
+                                                                                                            "type":  "object"
+                                                                                                        },
                                                                                            "policy":  {
                                                                                                           "description":  "Active workflow policy flags.",
                                                                                                           "properties":  {
@@ -729,7 +853,8 @@
                                                                                          "publish",
                                                                                          "stack",
                                                                                          "quality_gates",
-                                                                                         "policy"
+                                                                                         "policy",
+                                                                                         "contract"
                                                                                      ],
                                                                         "type":  "object"
                                                                     }
@@ -738,6 +863,7 @@
                                                      "generated_at",
                                                      "snapshot",
                                                      "next_actions",
+                                                     "contract",
                                                      "doctor",
                                                      "ship"
                                                  ],
@@ -838,6 +964,34 @@
                                                                                  ],
                                                                     "type":  "object"
                                                                 },
+                                                     "contract":  {
+                                                                      "description":  "Contract snapshot status.",
+                                                                      "properties":  {
+                                                                                         "path":  {
+                                                                                                      "description":  "Path to the committed contract snapshot.",
+                                                                                                      "type":  "string"
+                                                                                                  },
+                                                                                         "reason":  {
+                                                                                                        "description":  "Human-readable contract status.",
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                         "snapshot_matches":  {
+                                                                                                                  "description":  "Whether the committed snapshot matches the current contract output.",
+                                                                                                                  "type":  "boolean"
+                                                                                                              },
+                                                                                         "version":  {
+                                                                                                         "description":  "Current contract version.",
+                                                                                                         "type":  "string"
+                                                                                                     }
+                                                                                     },
+                                                                      "required":  [
+                                                                                       "version",
+                                                                                       "snapshot_matches",
+                                                                                       "reason",
+                                                                                       "path"
+                                                                                   ],
+                                                                      "type":  "object"
+                                                                  },
                                                      "policy":  {
                                                                     "description":  "Active workflow policy flags.",
                                                                     "properties":  {
@@ -1009,6 +1163,7 @@
                                                    "stack",
                                                    "quality_gates",
                                                    "policy",
+                                                   "contract",
                                                    "ship"
                                                ],
                                   "type":  "object"

@@ -177,7 +177,7 @@ function Get-ToiConfig {
         qualityGateMode  = 'warn'
         validationCommands = @()
         requirePublishedForPr = $true
-        dashboardSections = @('branch', 'publish', 'stack', 'gates', 'next')
+        dashboardSections = @('branch', 'publish', 'stack', 'gates', 'contract', 'next')
         releaseTagPrefix = 'v'
         releaseNotesFile = 'CHANGELOG.md'
         releaseVersionPattern = '^\d+\.\d+\.\d+$'
@@ -1026,6 +1026,7 @@ function Get-ToiWorkflowSnapshot {
     $protectedBranches = Get-ProtectedBranches
     $commitConvention = Get-CommitConvention
     $branchType = Get-CurrentBranchType
+    $contractStatus = Get-ToiContractStatus
 
     $upstreamTracking = $null
     if ($upstreamRef) {
@@ -1055,6 +1056,7 @@ function Get-ToiWorkflowSnapshot {
         UpstreamTracking  = $upstreamTracking
         DefaultTracking   = $defaultTracking
         RequireBranchNote = (Test-BranchNoteRequired)
+        ContractStatus    = $contractStatus
     }
 }
 
@@ -1092,6 +1094,10 @@ function Get-ToiNextActions {
 
     if ($Snapshot.DefaultTracking -and $Snapshot.DefaultTracking.RightAhead -gt 0) {
         $nextActions.Add("Restack or rebase on $($Snapshot.DefaultBranch) to pick up newer commits.")
+    }
+
+    if (-not $Snapshot.ContractStatus.SnapshotMatches) {
+        $nextActions.Add('Refresh the committed contract snapshot with `.\toi.ps1 schema -WriteSnapshot`.')
     }
 
     return @($nextActions | Select-Object -Unique)
@@ -1140,6 +1146,12 @@ function Convert-ToiSnapshotToJsonModel {
         }
         policy = [PSCustomObject]@{
             require_branch_note = $Snapshot.RequireBranchNote
+        }
+        contract = [PSCustomObject]@{
+            version = $Snapshot.ContractStatus.Version
+            snapshot_matches = $Snapshot.ContractStatus.SnapshotMatches
+            reason = $Snapshot.ContractStatus.Reason
+            path = $Snapshot.ContractStatus.SnapshotPath
         }
     }
 }
@@ -1267,6 +1279,12 @@ function Get-ToiReportModel {
         generated_at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
         snapshot = Convert-ToiSnapshotToJsonModel -Snapshot $snapshot
         next_actions = @($nextActions)
+        contract = [PSCustomObject]@{
+            version = $snapshot.ContractStatus.Version
+            snapshot_matches = $snapshot.ContractStatus.SnapshotMatches
+            reason = $snapshot.ContractStatus.Reason
+            path = $snapshot.ContractStatus.SnapshotPath
+        }
         doctor = [PSCustomObject]@{
             recommendations = @($doctorRecommendations)
         }
@@ -1317,6 +1335,13 @@ function Convert-ToiReportToMarkdown {
     if ($null -ne $Report.snapshot.publish.behind) {
         $lines.Add("- Behind: $($Report.snapshot.publish.behind)")
     }
+    $lines.Add('')
+    $lines.Add('## Contracts')
+    $lines.Add('')
+    $lines.Add("- Version: $($Report.contract.version)")
+    $lines.Add("- Snapshot matches: $($Report.contract.snapshot_matches)")
+    $lines.Add("- Snapshot path: $($Report.contract.path)")
+    $lines.Add("- Status: $($Report.contract.reason)")
     $lines.Add('')
     $lines.Add('## Ship')
     $lines.Add('')
@@ -1531,6 +1556,12 @@ function Get-ToiJsonCommandSchemas {
     $policySchema = New-ToiObjectSchema -Description 'Active workflow policy flags.' -Required @('require_branch_note') -Properties @{
         require_branch_note = (New-ToiSchemaField -Type 'boolean' -Description 'Whether non-default branches require a local note.')
     }
+    $contractSchema = New-ToiObjectSchema -Description 'Contract snapshot status.' -Required @('version', 'snapshot_matches', 'reason', 'path') -Properties @{
+        version = (New-ToiSchemaField -Type 'string' -Description 'Current contract version.')
+        snapshot_matches = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the committed snapshot matches the current contract output.')
+        reason = (New-ToiSchemaField -Type 'string' -Description 'Human-readable contract status.')
+        path = (New-ToiSchemaField -Type 'string' -Description 'Path to the committed contract snapshot.')
+    }
     $doctorSchema = New-ToiObjectSchema -Description 'Doctor recommendations.' -Required @('recommendations') -Properties @{
         recommendations = $stringArray
     }
@@ -1550,13 +1581,14 @@ function Get-ToiJsonCommandSchemas {
         passed = $numberField
         failed = $numberField
     }
-    $snapshotSchema = New-ToiObjectSchema -Description 'Workflow snapshot model.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy') -Properties @{
+    $snapshotSchema = New-ToiObjectSchema -Description 'Workflow snapshot model.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract') -Properties @{
         branch = $branchSchema
         working_tree = $workingTreeSchema
         publish = $publishSchema
         stack = $stackSchema
         quality_gates = $qualityGatesSchema
         policy = $policySchema
+        contract = $contractSchema
     }
 
     return [PSCustomObject]@{
@@ -1569,36 +1601,41 @@ function Get-ToiJsonCommandSchemas {
                 unstaged = $stringArray
                 untracked = $stringArray
             })
-        dashboard = (New-ToiObjectSchema -Description 'Dashboard command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'next_actions') -Properties @{
+        dashboard = (New-ToiObjectSchema -Description 'Dashboard command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract', 'next_actions') -Properties @{
                 branch = $branchSchema
                 working_tree = $workingTreeSchema
                 publish = $publishSchema
                 stack = $stackSchema
                 quality_gates = $qualityGatesSchema
                 policy = $policySchema
+                contract = $contractSchema
                 next_actions = $stringArray
             })
-        next = (New-ToiObjectSchema -Description 'Next command JSON output.' -Required @('branch', 'message', 'published') -Properties @{
+        next = (New-ToiObjectSchema -Description 'Next command JSON output.' -Required @('branch', 'message', 'published', 'contract_version', 'contract_snapshot_matches') -Properties @{
                 branch = New-ToiSchemaField -Type 'string' -Description 'Current branch name.'
                 message = New-ToiSchemaField -Type 'string' -Description 'Single recommended next action.'
                 published = New-ToiSchemaField -Type 'boolean' -Description 'Whether the branch is published.'
+                contract_version = New-ToiSchemaField -Type 'string' -Description 'Current contract version.'
+                contract_snapshot_matches = New-ToiSchemaField -Type 'boolean' -Description 'Whether the committed contract snapshot matches current output.'
             })
-        doctor = (New-ToiObjectSchema -Description 'Doctor command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'recommendations') -Properties @{
+        doctor = (New-ToiObjectSchema -Description 'Doctor command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract', 'recommendations') -Properties @{
                 branch = $branchSchema
                 working_tree = $workingTreeSchema
                 publish = $publishSchema
                 stack = $stackSchema
                 quality_gates = $qualityGatesSchema
                 policy = $policySchema
+                contract = $contractSchema
                 recommendations = $stringArray
             })
-        ship = (New-ToiObjectSchema -Description 'Ship command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'ship') -Properties @{
+        ship = (New-ToiObjectSchema -Description 'Ship command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract', 'ship') -Properties @{
                 branch = $branchSchema
                 working_tree = $workingTreeSchema
                 publish = $publishSchema
                 stack = $stackSchema
                 quality_gates = $qualityGatesSchema
                 policy = $policySchema
+                contract = $contractSchema
                 ship = $shipAssessmentSchema
             })
         publish = [PSCustomObject]@{
@@ -1628,10 +1665,11 @@ function Get-ToiJsonCommandSchemas {
                 checks = (New-ToiArraySchema -Description 'Per-check results.' -Items $selfCheckResultSchema)
                 summary = $selfCheckSummarySchema
             })
-        report = (New-ToiObjectSchema -Description 'Report command JSON output.' -Required @('generated_at', 'snapshot', 'next_actions', 'doctor', 'ship') -Properties @{
+        report = (New-ToiObjectSchema -Description 'Report command JSON output.' -Required @('generated_at', 'snapshot', 'next_actions', 'contract', 'doctor', 'ship') -Properties @{
                 generated_at = New-ToiSchemaField -Type 'string' -Description 'Local timestamp when the report was generated.'
                 snapshot = $snapshotSchema
                 next_actions = $stringArray
+                contract = $contractSchema
                 doctor = $doctorSchema
                 ship = $shipAssessmentSchema
             })
@@ -1814,5 +1852,16 @@ function Test-ToiContractSnapshotMatchesCurrent {
         reason = if ($expectedCanonical -eq $currentCanonical) { 'Committed schema snapshot matches current contract output.' } else { 'Committed contract snapshot is out of date. Regenerate contracts/toi-schema.json.' }
         path = $snapshotPath
         contract_version = Get-ToiContractVersion
+    }
+}
+
+function Get-ToiContractStatus {
+    $status = Test-ToiContractSnapshotMatchesCurrent
+
+    return [PSCustomObject]@{
+        Version = $status.contract_version
+        SnapshotMatches = $status.matches
+        SnapshotPath = $status.path
+        Reason = $status.reason
     }
 }

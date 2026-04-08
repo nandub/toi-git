@@ -25,6 +25,9 @@ function Invoke-ToiCommand {
     elseif ($snapshot.DefaultTracking -and $snapshot.DefaultTracking.RightAhead -gt 0) {
         $message = "Restack or rebase onto $($snapshot.DefaultBranch) before opening the PR."
     }
+    elseif (-not $snapshot.ContractStatus.SnapshotMatches) {
+        $message = 'Refresh the committed contract snapshot with `.\toi.ps1 schema -WriteSnapshot`.'
+    }
     elseif ($snapshot.StackParent) {
         $message = 'Open the PR path with `.\toi.ps1 open pr` or restack with `.\toi.ps1 stack restack` if needed.'
     }
@@ -37,6 +40,8 @@ function Invoke-ToiCommand {
             branch = $snapshot.Branch
             message = $message
             published = $snapshot.Published
+            contract_version = $snapshot.ContractStatus.Version
+            contract_snapshot_matches = $snapshot.ContractStatus.SnapshotMatches
         })
         return
     }

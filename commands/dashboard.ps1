@@ -75,6 +75,13 @@ function Invoke-ToiCommand {
         }
     }
 
+    if ($sections -contains 'contract') {
+        Write-Section 'Contracts'
+        Write-KeyValue 'Version' $snapshot.ContractStatus.Version
+        Write-KeyValue 'Snapshot' $snapshot.ContractStatus.SnapshotMatches
+        Write-InfoLine $snapshot.ContractStatus.Reason
+    }
+
     if ($sections -contains 'next') {
         Write-Section 'Next'
         if ($nextActions.Count -eq 0) {

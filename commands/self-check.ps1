@@ -188,7 +188,7 @@ function Invoke-ToiCommand {
     $releaseNotesExisted = Test-Path -LiteralPath $releaseNotesFile
     $releaseNotesBackup = $null
     if ($releaseNotesExisted) {
-        $releaseNotesBackup = Get-Content -LiteralPath $releaseNotesFile -Raw
+        $releaseNotesBackup = [System.IO.File]::ReadAllBytes($releaseNotesFile)
     }
 
     try {
@@ -197,7 +197,7 @@ function Invoke-ToiCommand {
     }
     finally {
         if ($releaseNotesExisted) {
-            Set-Content -LiteralPath $releaseNotesFile -Value $releaseNotesBackup
+            [System.IO.File]::WriteAllBytes($releaseNotesFile, $releaseNotesBackup)
         }
         elseif (Test-Path -LiteralPath $releaseNotesFile) {
             Remove-Item -LiteralPath $releaseNotesFile -Force

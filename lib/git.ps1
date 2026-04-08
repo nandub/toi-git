@@ -176,6 +176,9 @@ function Get-ToiConfig {
         validationCommands = @()
         requirePublishedForPr = $true
         dashboardSections = @('branch', 'publish', 'stack', 'gates', 'next')
+        releaseTagPrefix = 'v'
+        releaseNotesFile = 'CHANGELOG.md'
+        releaseVersionPattern = '^\d+\.\d+\.\d+$'
         releaseBranches  = $true
         stackedBranches  = $true
     }
@@ -201,6 +204,9 @@ function Get-ToiConfig {
         validationCommands = if ($parsed.validationCommands) { @($parsed.validationCommands) } else { $defaultConfig.validationCommands }
         requirePublishedForPr = if ($null -ne $parsed.requirePublishedForPr) { [bool]$parsed.requirePublishedForPr } else { $defaultConfig.requirePublishedForPr }
         dashboardSections = if ($parsed.dashboardSections) { @($parsed.dashboardSections) } else { $defaultConfig.dashboardSections }
+        releaseTagPrefix = if ($parsed.releaseTagPrefix) { [string]$parsed.releaseTagPrefix } else { $defaultConfig.releaseTagPrefix }
+        releaseNotesFile = if ($parsed.releaseNotesFile) { [string]$parsed.releaseNotesFile } else { $defaultConfig.releaseNotesFile }
+        releaseVersionPattern = if ($parsed.releaseVersionPattern) { [string]$parsed.releaseVersionPattern } else { $defaultConfig.releaseVersionPattern }
         releaseBranches  = if ($null -ne $parsed.releaseBranches) { [bool]$parsed.releaseBranches } else { $defaultConfig.releaseBranches }
         stackedBranches  = if ($null -ne $parsed.stackedBranches) { [bool]$parsed.stackedBranches } else { $defaultConfig.stackedBranches }
     }
@@ -257,6 +263,21 @@ function Test-RequirePublishedForPr {
 function Get-DashboardSections {
     $config = Get-ToiConfig
     return @($config.dashboardSections)
+}
+
+function Get-ReleaseTagPrefix {
+    $config = Get-ToiConfig
+    return $config.releaseTagPrefix
+}
+
+function Get-ReleaseNotesFile {
+    $config = Get-ToiConfig
+    return $config.releaseNotesFile
+}
+
+function Get-ReleaseVersionPattern {
+    $config = Get-ToiConfig
+    return $config.releaseVersionPattern
 }
 
 function ConvertTo-BranchSlug {
@@ -704,4 +725,115 @@ function Get-ToiStackBranches {
     }
 
     return @($items)
+}
+
+function Test-ValidReleaseVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    $pattern = Get-ReleaseVersionPattern
+    return $Version -match $pattern
+}
+
+function Get-ReleaseTagName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    return "$(Get-ReleaseTagPrefix)$Version"
+}
+
+function Get-LatestReleaseTag {
+    $prefix = Get-ReleaseTagPrefix
+    $result = Invoke-Git -GitArguments @('tag', '--list', "$prefix*")
+    $tags = @($result.Output | Where-Object { $_ -and $_.Trim() } | Sort-Object)
+
+    if ($tags.Count -eq 0) {
+        return $null
+    }
+
+    return $tags[-1]
+}
+
+function Test-TagExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TagName
+    )
+
+    $result = Invoke-Git -GitArguments @('rev-parse', '--verify', "refs/tags/$TagName") -AllowFailure
+    return $result.ExitCode -eq 0
+}
+
+function Get-ReleaseCommitRange {
+    param(
+        [string]$SinceRef
+    )
+
+    $head = 'HEAD'
+    if ($SinceRef) {
+        return "$SinceRef..$head"
+    }
+
+    return $head
+}
+
+function Get-ReleaseCommitLines {
+    param(
+        [string]$SinceRef
+    )
+
+    $range = Get-ReleaseCommitRange -SinceRef $SinceRef
+    $args = if ($SinceRef) {
+        @('log', '--oneline', $range)
+    }
+    else {
+        @('log', '--oneline')
+    }
+
+    $result = Invoke-Git -GitArguments $args -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        return @()
+    }
+
+    return @($result.Output | Where-Object { $_ -and $_.Trim() })
+}
+
+function New-ReleaseNotesContent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Version,
+
+        [string]$SinceRef
+    )
+
+    $tagName = Get-ReleaseTagName -Version $Version
+    $commits = Get-ReleaseCommitLines -SinceRef $SinceRef
+    $lines = New-Object System.Collections.Generic.List[string]
+
+    $lines.Add("# Release $Version")
+    $lines.Add('')
+    $lines.Add('Tag: `' + $tagName + '`')
+    $lines.Add('Generated: ' + (Get-Date -Format 'yyyy-MM-dd'))
+    $lines.Add('')
+    $lines.Add('## Summary')
+    $lines.Add('')
+    $lines.Add('- Fill in the high-level changes for this release.')
+    $lines.Add('')
+    $lines.Add('## Commits')
+    $lines.Add('')
+
+    if ($commits.Count -eq 0) {
+        $lines.Add('- No commits found for this release range.')
+    }
+    else {
+        foreach ($commit in $commits) {
+            $lines.Add('- ' + $commit)
+        }
+    }
+
+    return ($lines -join [Environment]::NewLine)
 }

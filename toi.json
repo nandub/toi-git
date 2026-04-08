@@ -22,6 +22,9 @@
     "gates",
     "next"
   ],
+  "releaseTagPrefix": "v",
+  "releaseNotesFile": "CHANGELOG.md",
+  "releaseVersionPattern": "^\\d+\\.\\d+\\.\\d+$",
   "releaseBranches": true,
   "stackedBranches": true
 }

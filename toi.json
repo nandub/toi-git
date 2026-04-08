@@ -12,6 +12,9 @@
     "main"
   ],
   "commitConvention": "optional",
+  "qualityGateMode": "warn",
+  "validationCommands": [],
+  "requirePublishedForPr": true,
   "releaseBranches": true,
   "stackedBranches": true
 }

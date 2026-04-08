@@ -32,6 +32,10 @@ function Invoke-ToiCommand {
                 throw 'PR view is only useful from a non-default branch.'
             }
 
+            if ((Test-RequirePublishedForPr) -and -not (Test-CurrentBranchPublished)) {
+                throw 'Current policy requires the branch to be published before opening a PR.'
+            }
+
             $finalUrl = Get-PullRequestBrowseUrl -RepositoryUrl $browseUrl -BaseBranch $defaultBranch -HeadBranch $currentBranch
         }
         default {

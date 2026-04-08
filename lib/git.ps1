@@ -172,6 +172,9 @@ function Get-ToiConfig {
         syncStrategy     = 'rebase'
         protectBranches  = @('main')
         commitConvention = 'optional'
+        qualityGateMode  = 'warn'
+        validationCommands = @()
+        requirePublishedForPr = $true
         releaseBranches  = $true
         stackedBranches  = $true
     }
@@ -193,6 +196,9 @@ function Get-ToiConfig {
         syncStrategy     = if ($parsed.syncStrategy) { [string]$parsed.syncStrategy } else { $defaultConfig.syncStrategy }
         protectBranches  = if ($parsed.protectBranches) { @($parsed.protectBranches) } else { $defaultConfig.protectBranches }
         commitConvention = if ($parsed.commitConvention) { [string]$parsed.commitConvention } else { $defaultConfig.commitConvention }
+        qualityGateMode  = if ($parsed.qualityGateMode) { [string]$parsed.qualityGateMode } else { $defaultConfig.qualityGateMode }
+        validationCommands = if ($parsed.validationCommands) { @($parsed.validationCommands) } else { $defaultConfig.validationCommands }
+        requirePublishedForPr = if ($null -ne $parsed.requirePublishedForPr) { [bool]$parsed.requirePublishedForPr } else { $defaultConfig.requirePublishedForPr }
         releaseBranches  = if ($null -ne $parsed.releaseBranches) { [bool]$parsed.releaseBranches } else { $defaultConfig.releaseBranches }
         stackedBranches  = if ($null -ne $parsed.stackedBranches) { [bool]$parsed.stackedBranches } else { $defaultConfig.stackedBranches }
     }
@@ -229,6 +235,21 @@ function Test-ReleaseBranchesEnabled {
 function Test-StackedBranchesEnabled {
     $config = Get-ToiConfig
     return [bool]$config.stackedBranches
+}
+
+function Get-QualityGateMode {
+    $config = Get-ToiConfig
+    return $config.qualityGateMode
+}
+
+function Get-ValidationCommands {
+    $config = Get-ToiConfig
+    return @($config.validationCommands)
+}
+
+function Test-RequirePublishedForPr {
+    $config = Get-ToiConfig
+    return [bool]$config.requirePublishedForPr
 }
 
 function ConvertTo-BranchSlug {
@@ -482,4 +503,68 @@ function Get-PullRequestBrowseUrl {
     )
 
     return "$RepositoryUrl/compare/$BaseBranch...${HeadBranch}?expand=1&quick_pull=1"
+}
+
+function Invoke-ToiValidationCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandText
+    )
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = 'powershell'
+    $startInfo.Arguments = "-NoProfile -NonInteractive -Command $CommandText"
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+    $startInfo.WorkingDirectory = Get-RepositoryRoot
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
+
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+
+    $output = @()
+    if ($stdout) {
+        $output += ($stdout -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
+    }
+
+    if ($stderr) {
+        $output += ($stderr -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
+    }
+
+    return [PSCustomObject]@{
+        Command  = $CommandText
+        ExitCode = $process.ExitCode
+        Output   = @($output)
+        Success  = ($process.ExitCode -eq 0)
+    }
+}
+
+function Invoke-ToiValidationSuite {
+    $commands = Get-ValidationCommands
+
+    if (-not $commands -or $commands.Count -eq 0) {
+        return [PSCustomObject]@{
+            HasChecks = $false
+            Results   = @()
+            Failed    = @()
+            Passed    = @()
+        }
+    }
+
+    $results = foreach ($command in $commands) {
+        Invoke-ToiValidationCommand -CommandText ([string]$command)
+    }
+
+    return [PSCustomObject]@{
+        HasChecks = $true
+        Results   = @($results)
+        Failed    = @($results | Where-Object { -not $_.Success })
+        Passed    = @($results | Where-Object { $_.Success })
+    }
 }

@@ -10,12 +10,14 @@ function Invoke-ToiCommand {
     $upstreamRef = Get-UpstreamRef
     $isPublished = Test-CurrentBranchPublished
     $protectedBranches = Get-ProtectedBranches
+    $qualityGateMode = Get-QualityGateMode
     $blockingIssues = New-Object System.Collections.Generic.List[string]
     $notes = New-Object System.Collections.Generic.List[string]
 
     Write-Section 'Ship'
     Write-Host "Branch: $branch"
     Write-Host "Published: $isPublished"
+    Write-Host "Quality gate mode: $qualityGateMode"
 
     if ($protectedBranches -contains $branch) {
         $blockingIssues.Add("Refusing to ship directly from protected branch '$branch'.")
@@ -73,6 +75,32 @@ function Invoke-ToiCommand {
         else {
             $notes.Add('Branch is local only. Run `.\toi.ps1 publish` to push it and set upstream.')
         }
+    }
+
+    $validationSuite = Invoke-ToiValidationSuite
+    if ($validationSuite.HasChecks) {
+        Write-Section 'Quality Gates'
+        foreach ($result in $validationSuite.Results) {
+            if ($result.Success) {
+                Write-SuccessLine "PASS  $($result.Command)"
+            }
+            else {
+                if ($qualityGateMode -eq 'block') {
+                    Write-ErrorLine "FAIL  $($result.Command)"
+                    $blockingIssues.Add("Quality gate failed: $($result.Command)")
+                }
+                else {
+                    Write-WarningLine "WARN  $($result.Command)"
+                    $notes.Add("Quality gate failed in warn mode: $($result.Command)")
+                }
+            }
+
+            $result.Output | Select-Object -First 5 | ForEach-Object { Write-InfoLine "  $_" }
+        }
+    }
+    else {
+        Write-Section 'Quality Gates'
+        Write-InfoLine 'No validation commands configured.'
     }
 
     Write-Section 'Assessment'

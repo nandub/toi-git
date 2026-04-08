@@ -10,6 +10,7 @@ function Invoke-ToiCommand {
     $openAfterPush = $Arguments -contains '-Open'
     $openPrAfterPush = $Arguments -contains '-Pr'
     $dryRun = $Arguments -contains '-DryRun'
+    $qualityGateMode = Get-QualityGateMode
 
     if ($protectedBranches -contains $branch) {
         throw "Refusing to publish directly from protected branch '$branch'."
@@ -24,10 +25,36 @@ function Invoke-ToiCommand {
     }
 
     $upstreamRef = Get-UpstreamRef
+    $validationSuite = Invoke-ToiValidationSuite
+    $failedChecks = @($validationSuite.Failed)
+
+    if ($validationSuite.HasChecks) {
+        Write-Section 'Quality Gates'
+        foreach ($result in $validationSuite.Results) {
+            if ($result.Success) {
+                Write-SuccessLine "PASS  $($result.Command)"
+            }
+            else {
+                if ($qualityGateMode -eq 'block') {
+                    Write-ErrorLine "FAIL  $($result.Command)"
+                }
+                else {
+                    Write-WarningLine "WARN  $($result.Command)"
+                }
+            }
+
+            $result.Output | Select-Object -First 5 | ForEach-Object { Write-InfoLine "  $_" }
+        }
+
+        if ($failedChecks.Count -gt 0 -and $qualityGateMode -eq 'block') {
+            throw 'Publish blocked by failing quality gates.'
+        }
+    }
 
     Write-Section 'Publish'
     Write-InfoLine "Branch: $branch"
     Write-InfoLine "Dry run: $dryRun"
+    Write-InfoLine "Quality gate mode: $qualityGateMode"
 
     if ($upstreamRef) {
         Write-InfoLine "Upstream: $upstreamRef"

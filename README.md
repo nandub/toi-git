@@ -17,7 +17,6 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 - `doctor`: inspect repo state and suggest next actions
 - `ship`: assess whether a branch is ready for push or PR
 - `publish`: push the current branch and print/open the PR path
-- `publish`: push the current branch and print/open the PR path
 - `stack`: create or restack dependent branches
 - `release`: create release branches from the default branch
 - `hotfix`: create hotfix branches from the default branch
@@ -26,6 +25,7 @@ TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visi
 
 - Everyday flow: `start`, `sync`, `save`, `ship`, `undo`
 - PR flow: `publish`, `open pr`, remote-aware `doctor`
+- Policy flow: configured quality gates can warn or block `ship` and `publish`
 - Team structure: typed branch names, protected branch awareness, default branch policy
 - Advanced flow: stack branches, release branches, hotfix branches, worktrees
 
@@ -40,6 +40,33 @@ TOI Git reads `toi.json` from the repository root.
   "syncStrategy": "rebase",
   "protectBranches": ["main"],
   "commitConvention": "optional",
+  "qualityGateMode": "warn",
+  "validationCommands": [],
+  "requirePublishedForPr": true,
+  "releaseBranches": true,
+  "stackedBranches": true
+}
+```
+
+Policy fields:
+
+- `qualityGateMode`: `warn` or `block`
+- `validationCommands`: PowerShell commands to run before `ship` and `publish`
+- `requirePublishedForPr`: if `true`, `open pr` requires the branch to be pushed first
+
+Example with a local validation command:
+
+```json
+{
+  "defaultBranch": "main",
+  "branchTypes": ["feature", "fix", "hotfix", "release", "chore"],
+  "syncStrategy": "rebase",
+  "protectBranches": ["main"],
+  "qualityGateMode": "block",
+  "validationCommands": [
+    ".\\toi.ps1 summary"
+  ],
+  "requirePublishedForPr": true,
   "releaseBranches": true,
   "stackedBranches": true
 }

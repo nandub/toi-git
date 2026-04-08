@@ -1,52 +1,162 @@
 # TOI Git
 
-TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visible, adds typed branch workflows, and provides safety checks for day-to-day shipping.
+TOI Git is a PowerShell workflow assistant for modern Git. It keeps raw Git visible, adds typed branch workflows, and gives you practical guidance for daily branch, review, release, and automation work.
 
-## Commands
+## Start Here
 
+The shortest useful flow looks like this:
+
+```powershell
+.\toi.ps1 start feature login-form
+.\toi.ps1 status
+.\toi.ps1 ship
+.\toi.ps1 publish
+.\toi.ps1 open pr
+```
+
+That covers the core TOI path:
+
+- create a typed branch
+- inspect local state
+- check whether the branch is ready
+- publish it to the remote
+- open the PR path
+
+## Quickstart
+
+Run TOI Git from inside a Git repository.
+
+```powershell
+.\toi.ps1 status
+.\toi.ps1 dashboard
+.\toi.ps1 next
+```
+
+If you are starting new work:
+
+```powershell
+.\toi.ps1 start feature login-form
+.\toi.ps1 note set "Prepare login form PR"
+.\toi.ps1 save
+.\toi.ps1 ship
+.\toi.ps1 publish
+```
+
+If you just want a fast repo check:
+
+```powershell
+.\toi.ps1 doctor
+.\toi.ps1 report
+.\toi.ps1 self-check
+```
+
+## Command Groups
+
+### Everyday Flow
+
+- `start`: create a typed branch like `feature/login`
 - `status`: compact branch and working tree summary
 - `summary`: recent commit history plus working tree overview
-- `sync`: fetch remotes and show branch tracking state
-- `commit`: create a commit with a message
-- `branch-clean`: list merged local branches and optionally delete them
 - `save`: stage everything and create a checkpoint commit
+- `commit`: create a commit with a message
 - `undo`: undo the last commit with a safe reset mode
-- `open`: open the repository remote in a browser
-- `worktree`: list or add Git worktrees
-- `start`: create a typed branch like `feature/login`
+- `sync`: fetch remotes and show branch tracking state
+- `next`: show the most likely next action
+
+### Review And PR Flow
+
 - `doctor`: inspect repo state and suggest next actions
 - `ship`: assess whether a branch is ready for push or PR
-- `publish`: push the current branch and print/open the PR path
-- `dashboard`: show a consolidated workflow overview
-- `next`: show the most likely next action
-- `note`: set or show a local note for the current branch
-- `self-check`: run lightweight local verification for TOI Git
-- `report`: generate a workflow report in markdown or json
-- `schema`: export the JSON contract surface in markdown or json
+- `publish`: push the current branch and print or open the PR path
+- `open`: open the repo, branch, compare view, or PR path in a browser
+- `note`: store a local branch note in `.git`
+
+### Release And Stack Flow
+
 - `stack`: create or restack dependent branches
 - `release`: start releases, scaffold notes, and create tags
 - `hotfix`: create hotfix branches from the default branch
+- `worktree`: list or add Git worktrees
+- `branch-clean`: list merged local branches and optionally delete them
 
-## Workflow Shape
+### Automation And Diagnostics
 
-- Everyday flow: `start`, `sync`, `save`, `ship`, `undo`
-- PR flow: `publish`, `open pr`, remote-aware `doctor`
-- Policy flow: configured quality gates can warn or block `ship` and `publish`
-- Daily view: `dashboard` and `next`
-- Terminal UX: `dashboard`, `next`, and `status` now share a compact cockpit-style view
-- Local memory: `note` stores branch intent in the local `.git` directory
-- Self-verification: `self-check` exercises core read-only commands and config parsing
-- Automation: `status`, `dashboard`, `next`, `doctor`, `ship`, `publish`, `release`, and `self-check` support `-Json`
-- CI: GitHub Actions runs the built-in self-check on pushes to `main` and on pull requests
-- CI: GitHub Actions publishes a job summary and uploads the self-check JSON artifact
-- CI: GitHub Actions also uploads workflow report artifacts in both markdown and JSON
-- CI: GitHub Actions uploads the JSON contract artifact from `schema -Json`
-- Team structure: typed branch names, protected branch awareness, default branch policy
-- Advanced flow: stack branches, release branches, release notes/tags, hotfix branches, worktrees
+- `dashboard`: consolidated workflow overview
+- `report`: workflow report in markdown or JSON
+- `schema`: JSON contract summary for automation consumers
+- `self-check`: lightweight local verification for TOI Git
+
+## Common Flows
+
+### Start A Feature
+
+```powershell
+.\toi.ps1 start feature login-form
+.\toi.ps1 note set "Prepare login form PR"
+.\toi.ps1 status
+```
+
+### Publish A Branch
+
+```powershell
+.\toi.ps1 ship
+.\toi.ps1 publish
+.\toi.ps1 open pr
+```
+
+### Cut A Release
+
+```powershell
+.\toi.ps1 release start 1.4.0
+.\toi.ps1 release notes 1.4.0
+.\toi.ps1 release tag 1.4.0
+```
+
+### Inspect Repo State In CI Or Scripts
+
+```powershell
+.\toi.ps1 status -Json
+.\toi.ps1 report -Json
+.\toi.ps1 schema -Json
+.\toi.ps1 self-check -Json
+```
+
+## Automation And Contracts
+
+These commands support `-Json`:
+
+- `status -Json`
+- `dashboard -Json`
+- `next -Json`
+- `doctor -Json`
+- `ship -Json`
+- `publish -Json`
+- `release ... -Json`
+- `self-check -Json`
+- `report -Json`
+- `schema -Json`
+
+Use them this way:
+
+- `status -Json` for lightweight branch and working tree state
+- `dashboard -Json` for a richer workflow snapshot plus next actions
+- `report -Json` for a CI-friendly workflow summary
+- `schema -Json` for the current JSON contract surface
+- `self-check -Json` for machine-readable local verification results
+
+GitHub Actions currently does this on pushes to `main` and on pull requests:
+
+- runs the built-in self-check
+- uploads the self-check JSON artifact
+- uploads workflow report artifacts in markdown and JSON
+- uploads the JSON contract artifact from `schema -Json`
+- publishes the markdown workflow report as the job summary
 
 ## Config
 
 TOI Git reads `toi.json` from the repository root.
+
+Default shape:
 
 ```json
 {
@@ -69,20 +179,20 @@ TOI Git reads `toi.json` from the repository root.
 }
 ```
 
-Policy fields:
+Important fields:
 
 - `qualityGateMode`: `warn` or `block`
 - `commitConvention`: `off`, `optional`, or `required`
 - `commitScopes`: allowed scopes for conventional commits
-- `branchNoteRequired`: if `true`, non-default branches should carry a local note
+- `branchNoteRequired`: require a local note on non-default branches
 - `validationCommands`: PowerShell commands to run before `ship` and `publish`
-- `requirePublishedForPr`: if `true`, `open pr` requires the branch to be pushed first
+- `requirePublishedForPr`: require the branch to be pushed before `open pr`
 - `dashboardSections`: controls which sections appear in `dashboard`
 - `releaseTagPrefix`: prefix used for release tags like `v1.2.3`
 - `releaseNotesFile`: file generated by `release notes`
 - `releaseVersionPattern`: regex used to validate release versions
 
-Example with a local validation command:
+Example with blocking validation:
 
 ```json
 {
@@ -100,67 +210,29 @@ Example with a local validation command:
 }
 ```
 
-## Usage
+## Reference
+
+More examples:
 
 ```powershell
-.\toi.ps1 status
-.\toi.ps1 start feature login-form
-.\toi.ps1 doctor
-.\toi.ps1 ship
-.\toi.ps1 publish
 .\toi.ps1 publish -DryRun
 .\toi.ps1 publish -Pr
-.\\toi.ps1 dashboard
-.\\toi.ps1 next
-.\\toi.ps1 note show
-.\\toi.ps1 note set "Prepare branch for login form PR"
-.\\toi.ps1 self-check
-.\\toi.ps1 report
-.\\toi.ps1 status -Json
-.\\toi.ps1 dashboard -Json
-.\\toi.ps1 next -Json
-.\\toi.ps1 doctor -Json
-.\\toi.ps1 ship -Json
-.\\toi.ps1 publish -Json -DryRun
-.\\toi.ps1 release notes 1.4.0 -Json
-.\toi.ps1 summary
-.\toi.ps1 sync
-.\toi.ps1 commit "Add branch cleanup helper"
+.\toi.ps1 dashboard
+.\toi.ps1 next
 .\toi.ps1 branch-clean
 .\toi.ps1 branch-clean -Apply
-.\toi.ps1 save
-.\toi.ps1 undo
 .\toi.ps1 undo -Soft
 .\toi.ps1 open
 .\toi.ps1 open branch
 .\toi.ps1 open compare
-.\toi.ps1 open pr
 .\toi.ps1 worktree list
 .\toi.ps1 worktree add ..\Toi-feature feature/demo
 .\toi.ps1 stack new api-client
 .\toi.ps1 stack restack
-.\\toi.ps1 stack parent
-.\toi.ps1 release start 1.4.0
-.\\toi.ps1 release notes 1.4.0
-.\\toi.ps1 release tag 1.4.0
+.\toi.ps1 stack parent
 .\toi.ps1 hotfix start payment-timeout
 ```
 
-Run the command from inside a Git repository.
-
-TOI Git also stores explicit stack parent metadata in the local `.git` directory so stacked branches can be restacked against their recorded parent without polluting tracked files.
+TOI Git stores stack parent metadata and branch notes under the local `.git` directory so this workflow state does not pollute tracked files.
 
 There is also a lightweight wrapper at [tests/self-check.ps1](C:\Users\ferna\development\code\powershell\Codex\Toi\tests\self-check.ps1) for running the built-in verification flow.
-
-For automation and scripting, these commands support `-Json`:
-
-- `status -Json`
-- `dashboard -Json`
-- `next -Json`
-- `doctor -Json`
-- `ship -Json`
-- `publish -Json`
-- `release ... -Json`
-- `self-check -Json`
-- `report -Json`
-- `schema -Json`

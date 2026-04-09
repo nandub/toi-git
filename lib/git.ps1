@@ -171,6 +171,17 @@ function Get-RepositoryRoot {
     return ($result.Output | Select-Object -First 1).Trim()
 }
 
+function Get-GitDirectory {
+    $result = Invoke-Git -GitArguments @('rev-parse', '--git-dir')
+    $gitDir = ($result.Output | Select-Object -First 1).Trim()
+
+    if ([System.IO.Path]::IsPathRooted($gitDir)) {
+        return $gitDir
+    }
+
+    return (Join-Path (Get-RepositoryRoot) $gitDir)
+}
+
 function Get-RemoteUrl {
     param(
         [string]$RemoteName = 'origin'
@@ -2649,6 +2660,201 @@ function Get-ToiContractStatus {
         SnapshotMatches = $status.matches
         SnapshotPath = $status.path
         Reason = $status.reason
+    }
+}
+
+function Get-ToiBisectMetadataPath {
+    return (Join-Path (Get-GitDirectory) 'toi-bisect.json')
+}
+
+function Get-ToiBisectMetadata {
+    $path = Get-ToiBisectMetadataPath
+    if (-not (Test-Path -LiteralPath $path)) {
+        return $null
+    }
+
+    $raw = Get-Content -LiteralPath $path -Raw
+    if (-not $raw.Trim()) {
+        return $null
+    }
+
+    return ($raw | ConvertFrom-Json)
+}
+
+function Set-ToiBisectMetadata {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Metadata
+    )
+
+    $path = Get-ToiBisectMetadataPath
+    $directory = Split-Path -Parent $path
+    if (-not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    Set-Content -LiteralPath $path -Value ($Metadata | ConvertTo-Json -Depth 8)
+    return $path
+}
+
+function Remove-ToiBisectMetadata {
+    $path = Get-ToiBisectMetadataPath
+    Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+}
+
+function Test-ToiBisectActive {
+    $gitDir = Get-GitDirectory
+    return (Test-Path -LiteralPath (Join-Path $gitDir 'BISECT_LOG'))
+}
+
+function Assert-ToiBisectActive {
+    if (-not (Test-ToiBisectActive)) {
+        throw 'No active bisect session. Start one with `toi bisect start <good> <bad>`.'
+    }
+}
+
+function Get-ToiBisectLogLines {
+    if (-not (Test-ToiBisectActive)) {
+        return @()
+    }
+
+    $result = Invoke-Git -GitArguments @('bisect', 'log') -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        return @()
+    }
+
+    return @($result.Output)
+}
+
+function Get-ToiBisectCurrentCommit {
+    if (-not (Test-HasCommits)) {
+        return $null
+    }
+
+    $result = Invoke-Git -GitArguments @('show', '-s', '--format=%H%n%h%n%s', 'HEAD')
+    $lines = @($result.Output)
+    if ($lines.Count -lt 3) {
+        return $null
+    }
+
+    return [PSCustomObject]@{
+        sha = $lines[0]
+        short_sha = $lines[1]
+        subject = $lines[2]
+    }
+}
+
+function Get-ToiBisectState {
+    $metadata = Get-ToiBisectMetadata
+    $active = Test-ToiBisectActive
+    $currentCommit = if ($active) { Get-ToiBisectCurrentCommit } else { $null }
+    $logLines = if ($active) { Get-ToiBisectLogLines } else { @() }
+    $steps = @($logLines | Where-Object { $_ -and $_.Trim() -and $_ -notmatch '^#' })
+    $branchName = Get-CurrentBranchName
+    if (-not $branchName) {
+        $branchName = '(detached HEAD)'
+    }
+
+    return [PSCustomObject]@{
+        active = $active
+        branch = $branchName
+        metadata = $metadata
+        current_commit = $currentCommit
+        steps = @($steps)
+    }
+}
+
+function Start-ToiBisectSession {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$GoodRef,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BadRef
+    )
+
+    if (-not (Test-WorkingTreeClean)) {
+        throw 'Working tree must be clean before starting a bisect session.'
+    }
+
+    if (Test-ToiBisectActive) {
+        throw 'A bisect session is already active. Use `toi bisect status` or `toi bisect reset` first.'
+    }
+
+    $startedBranch = Get-CurrentBranchName
+    $result = Invoke-Git -GitArguments @('bisect', 'start', $BadRef, $GoodRef)
+    $metadata = [PSCustomObject]@{
+        started_at = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+        started_branch = $startedBranch
+        good_ref = $GoodRef
+        bad_ref = $BadRef
+        test_command = $null
+    }
+    Set-ToiBisectMetadata -Metadata $metadata | Out-Null
+
+    return [PSCustomObject]@{
+        output = @($result.Output)
+        metadata = $metadata
+        state = Get-ToiBisectState
+    }
+}
+
+function Invoke-ToiBisectMark {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('good', 'bad', 'skip')]
+        [string]$Mark
+    )
+
+    Assert-ToiBisectActive
+    $result = Invoke-Git -GitArguments @('bisect', $Mark)
+
+    return [PSCustomObject]@{
+        output = @($result.Output)
+        state = Get-ToiBisectState
+    }
+}
+
+function Invoke-ToiBisectRun {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandText
+    )
+
+    Assert-ToiBisectActive
+
+    $metadata = Get-ToiBisectMetadata
+    if ($metadata) {
+        $metadata.test_command = $CommandText
+        Set-ToiBisectMetadata -Metadata $metadata | Out-Null
+    }
+
+    $result = Invoke-Git -GitArguments @(
+        'bisect', 'run',
+        'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $CommandText
+    )
+
+    return [PSCustomObject]@{
+        output = @($result.Output)
+        state = Get-ToiBisectState
+    }
+}
+
+function Reset-ToiBisectSession {
+    if (-not (Test-ToiBisectActive)) {
+        Remove-ToiBisectMetadata
+        return [PSCustomObject]@{
+            output = @()
+            reset = $false
+        }
+    }
+
+    $result = Invoke-Git -GitArguments @('bisect', 'reset')
+    Remove-ToiBisectMetadata
+
+    return [PSCustomObject]@{
+        output = @($result.Output)
+        reset = $true
     }
 }
 

@@ -132,6 +132,7 @@ If you just want a fast repo check:
 
 - `dashboard`: consolidated workflow overview
 - `version`: module, tag, and current commit version info
+- `bisect`: guided `git bisect` workflow with TOI state and reporting
 - `report`: workflow report in markdown or JSON
 - `schema`: JSON contract summary for automation consumers
 - `self-check`: lightweight local verification for TOI Git

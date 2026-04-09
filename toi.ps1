@@ -41,6 +41,7 @@ $commandMap = @{
     'stack'        = Join-Path $root 'commands\stack.ps1'
     'release'      = Join-Path $root 'commands\release.ps1'
     'hotfix'       = Join-Path $root 'commands\hotfix.ps1'
+    'bisect'       = Join-Path $root 'commands\bisect.ps1'
     'help'         = $null
 }
 
@@ -75,6 +76,7 @@ function Show-Help {
     Write-Host '  stack         Create or restack dependent branches'
     Write-Host '  release       Start a release branch'
     Write-Host '  hotfix        Start a hotfix branch from the default branch'
+    Write-Host '  bisect        Guide a git bisect debugging session'
 }
 
 if (-not $Command) {

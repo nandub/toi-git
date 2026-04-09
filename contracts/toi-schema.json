@@ -1,5 +1,33 @@
 {
     "commands":  {
+                     "bisect_log":  {
+                                        "description":  "Bisect log JSON output.",
+                                        "properties":  {
+                                                           "active":  {
+                                                                          "type":  "boolean"
+                                                                      },
+                                                           "branch":  {
+                                                                          "type":  "string"
+                                                                      },
+                                                           "completed":  {
+                                                                             "type":  "boolean"
+                                                                         },
+                                                           "steps":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     }
+                                                       },
+                                        "required":  [
+                                                         "active",
+                                                         "completed",
+                                                         "branch",
+                                                         "steps"
+                                                     ],
+                                        "type":  "object"
+                                    },
                      "bisect_report":  {
                                            "description":  "Bisect report JSON output.",
                                            "properties":  {

@@ -2537,6 +2537,12 @@ function Get-ToiJsonCommandSchemas {
                 recorded_steps = $numberField
                 recent_log = $stringArray
             })
+        bisect_log = (New-ToiObjectSchema -Description 'Bisect log JSON output.' -Required @('active', 'completed', 'branch', 'steps') -Properties @{
+                active = $booleanField
+                completed = $booleanField
+                branch = $stringField
+                steps = $stringArray
+            })
     }
 }
 
@@ -2793,6 +2799,24 @@ function Get-ToiBisectLogLines {
     return @($result.Output)
 }
 
+function Get-ToiBisectRecordedSteps {
+    param(
+        [psobject]$Metadata,
+        [string[]]$LogLines
+    )
+
+    $steps = @($LogLines | Where-Object { $_ -and $_.Trim() -and $_ -notmatch '^#' })
+    if ($steps.Count -gt 0) {
+        return $steps
+    }
+
+    if ($Metadata -and $Metadata.steps) {
+        return @($Metadata.steps)
+    }
+
+    return @()
+}
+
 function Get-ToiBisectCompletion {
     param(
         [string[]]$LogLines
@@ -2861,7 +2885,7 @@ function Get-ToiBisectState {
     $active = Test-ToiBisectActive
     $currentCommit = if ($active) { Get-ToiBisectCurrentCommit } else { $null }
     $logLines = if ($active) { Get-ToiBisectLogLines } else { @() }
-    $steps = @($logLines | Where-Object { $_ -and $_.Trim() -and $_ -notmatch '^#' })
+    $steps = @(Get-ToiBisectRecordedSteps -Metadata $metadata -LogLines $logLines)
     $completion = if ($active) { Get-ToiBisectCompletion -LogLines $logLines } else { $null }
     if (-not $completion -and $metadata -and $metadata.first_bad_commit) {
         $completion = [PSCustomObject]@{
@@ -2964,6 +2988,7 @@ function Start-ToiBisectSession {
         test_command = $null
         completed = $false
         first_bad_commit = $null
+        steps = @()
     }
     Set-ToiBisectMetadata -Metadata $metadata | Out-Null
 
@@ -2982,7 +3007,13 @@ function Invoke-ToiBisectMark {
     )
 
     Assert-ToiBisectActive
+    $metadata = Get-ToiBisectMetadata
     $result = Invoke-Git -GitArguments @('bisect', $Mark)
+    if ($metadata) {
+        $state = Get-ToiBisectState
+        $metadata.steps = @($state.steps)
+        Set-ToiBisectMetadata -Metadata $metadata | Out-Null
+    }
 
     return [PSCustomObject]@{
         output = @($result.Output)
@@ -3010,11 +3041,15 @@ function Invoke-ToiBisectRun {
     )
 
     $completion = Get-ToiBisectCompletionFromOutput -OutputLines $result.Output
-    if ($completion -and $metadata) {
-        $metadata.completed = $true
-        $metadata.first_bad_commit = [PSCustomObject]@{
-            sha = $completion.sha
-            subject = $completion.subject
+    if ($metadata) {
+        $state = Get-ToiBisectState
+        $metadata.steps = @($state.steps)
+        if ($completion) {
+            $metadata.completed = $true
+            $metadata.first_bad_commit = [PSCustomObject]@{
+                sha = $completion.sha
+                subject = $completion.subject
+            }
         }
         Set-ToiBisectMetadata -Metadata $metadata | Out-Null
     }

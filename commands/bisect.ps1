@@ -7,7 +7,7 @@ function Invoke-ToiCommand {
     $filteredArguments = @($Arguments | Where-Object { $_ -ne '-Json' })
 
     if ($filteredArguments.Count -eq 0) {
-        throw 'Usage: toi bisect <start|status|good|bad|skip|run|report|reset> [args]'
+        throw 'Usage: toi bisect <start|status|good|bad|skip|run|log|report|reset> [args]'
     }
 
     $action = $filteredArguments[0].ToLowerInvariant()
@@ -228,6 +228,32 @@ function Invoke-ToiCommand {
                 @($state.steps | Select-Object -Last 5) | ForEach-Object { Write-BulletLine $_ }
             }
         }
+        'log' {
+            $state = Get-ToiBisectState
+
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    active = $state.active
+                    completed = $state.completed
+                    branch = $state.branch
+                    steps = @($state.steps)
+                })
+                return
+            }
+
+            Write-Section 'Bisect Log'
+            if (-not $state.active -and -not $state.completed) {
+                Write-InfoLine 'No active bisect session.'
+                return
+            }
+
+            if ($state.steps.Count -eq 0) {
+                Write-InfoLine 'No recorded bisect log entries yet.'
+                return
+            }
+
+            $state.steps | ForEach-Object { Write-BulletLine $_ }
+        }
         'reset' {
             $resetResult = Reset-ToiBisectSession
             if ($json) {
@@ -252,7 +278,7 @@ function Invoke-ToiCommand {
             $resetResult.output | ForEach-Object { Write-Host $_ }
         }
         default {
-            throw 'Usage: toi bisect <start|status|good|bad|skip|run|report|reset> [args]'
+            throw 'Usage: toi bisect <start|status|good|bad|skip|run|log|report|reset> [args]'
         }
     }
 }

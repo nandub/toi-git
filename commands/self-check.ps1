@@ -178,6 +178,7 @@ function Invoke-ToiCommand {
         @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Status'; Args = @('bisect', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Report'; Args = @('bisect', 'report'); TimeoutSeconds = 15 },
+        @{ Name = 'Bisect Log'; Args = @('bisect', 'log'); TimeoutSeconds = 15 },
         @{ Name = 'PR Ready'; Args = @('pr', 'ready', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'PR Merge'; Args = @('pr', 'merge', '-DryRun'); TimeoutSeconds = 15 }
     )
@@ -290,6 +291,7 @@ function Invoke-ToiCommand {
         @{ Name = 'Version JSON'; Args = @('version', '-Json'); TimeoutSeconds = 15; Required = @('module_version', 'latest_tag'); SchemaKey = $null },
         @{ Name = 'Bisect Status JSON'; Args = @('bisect', 'status', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'steps'); SchemaKey = 'bisect_status' },
         @{ Name = 'Bisect Report JSON'; Args = @('bisect', 'report', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'recorded_steps', 'recent_log'); SchemaKey = 'bisect_report' },
+        @{ Name = 'Bisect Log JSON'; Args = @('bisect', 'log', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'steps'); SchemaKey = 'bisect_log' },
         @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship'); SchemaKey = 'report' },
         @{ Name = 'Schema JSON'; Args = @('schema', '-Json'); TimeoutSeconds = 20; Required = @('contract_version', 'commands') }
     )

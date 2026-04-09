@@ -52,6 +52,7 @@ function Invoke-ToiCommand {
 
             Write-Section 'Bisect'
             Write-KeyValue 'Active' $state.active
+            Write-KeyValue 'Completed' $state.completed
             Write-KeyValue 'Branch' $state.branch
 
             if (-not $state.active) {
@@ -73,6 +74,11 @@ function Invoke-ToiCommand {
 
             if ($state.current_commit) {
                 Write-KeyValue 'Current Commit' "$($state.current_commit.short_sha) $($state.current_commit.subject)"
+            }
+
+            if ($state.first_bad_commit) {
+                Write-KeyValue 'First Bad Commit' "$($state.first_bad_commit.sha) $($state.first_bad_commit.subject)"
+                Write-InfoLine 'Reset the session with `toi bisect reset` when you are done.'
             }
 
             Write-KeyValue 'Recorded Steps' $state.steps.Count
@@ -168,6 +174,7 @@ function Invoke-ToiCommand {
             if ($json) {
                 Write-Json ([PSCustomObject]@{
                     active = $state.active
+                    completed = $state.completed
                     branch = $state.branch
                     session = if ($state.metadata) {
                         [PSCustomObject]@{
@@ -183,6 +190,7 @@ function Invoke-ToiCommand {
                         $null
                     }
                     candidate = $state.current_commit
+                    first_bad_commit = $state.first_bad_commit
                     recorded_steps = $state.steps.Count
                     recent_log = @($state.steps | Select-Object -Last 5)
                 })
@@ -199,6 +207,9 @@ function Invoke-ToiCommand {
                 Write-KeyValue 'Candidate' "$($state.current_commit.short_sha) $($state.current_commit.subject)"
                 Write-KeyValue 'SHA' $state.current_commit.sha
             }
+            if ($state.first_bad_commit) {
+                Write-KeyValue 'First Bad Commit' "$($state.first_bad_commit.sha) $($state.first_bad_commit.subject)"
+            }
             if ($state.metadata) {
                 Write-KeyValue 'Good Ref' $state.metadata.good_ref
                 Write-KeyValue 'Bad Ref' $state.metadata.bad_ref
@@ -209,6 +220,9 @@ function Invoke-ToiCommand {
                 }
             }
             Write-KeyValue 'Recorded Steps' $state.steps.Count
+            if ($state.first_bad_commit) {
+                Write-InfoLine 'Use `toi bisect reset` to return to your normal branch state.'
+            }
             if ($state.steps.Count -gt 0) {
                 Write-Section 'Recent Log'
                 @($state.steps | Select-Object -Last 5) | ForEach-Object { Write-BulletLine $_ }
@@ -220,6 +234,7 @@ function Invoke-ToiCommand {
                 Write-Json ([PSCustomObject]@{
                     action = 'reset'
                     reset = $resetResult.reset
+                    restored_branch = $resetResult.restored_branch
                     output = @($resetResult.output)
                 })
                 return
@@ -231,6 +246,9 @@ function Invoke-ToiCommand {
             }
 
             Write-SuccessLine 'Reset the bisect session.'
+            if ($resetResult.restored_branch) {
+                Write-InfoLine "Original branch: $($resetResult.restored_branch)"
+            }
             $resetResult.output | ForEach-Object { Write-Host $_ }
         }
         default {

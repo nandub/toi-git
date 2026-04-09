@@ -13,6 +13,13 @@
                                                                                 "description":  "Current bisect candidate commit, if active.",
                                                                                 "type":  "object|null"
                                                                             },
+                                                              "completed":  {
+                                                                                "type":  "boolean"
+                                                                            },
+                                                              "first_bad_commit":  {
+                                                                                       "description":  "Detected first bad commit when the bisect converges.",
+                                                                                       "type":  "object|null"
+                                                                                   },
                                                               "recent_log":  {
                                                                                  "description":  "Array of strings.",
                                                                                  "items":  {
@@ -30,9 +37,11 @@
                                                           },
                                            "required":  [
                                                             "active",
+                                                            "completed",
                                                             "branch",
                                                             "session",
                                                             "candidate",
+                                                            "first_bad_commit",
                                                             "recorded_steps",
                                                             "recent_log"
                                                         ],
@@ -47,10 +56,17 @@
                                                               "branch":  {
                                                                              "type":  "string"
                                                                          },
+                                                              "completed":  {
+                                                                                "type":  "boolean"
+                                                                            },
                                                               "current_commit":  {
                                                                                      "description":  "Current bisect commit candidate, if active.",
                                                                                      "type":  "object|null"
                                                                                  },
+                                                              "first_bad_commit":  {
+                                                                                       "description":  "Detected first bad commit when the bisect converges.",
+                                                                                       "type":  "object|null"
+                                                                                   },
                                                               "session":  {
                                                                               "description":  "Stored bisect session metadata, if active.",
                                                                               "type":  "object|null"
@@ -65,9 +81,11 @@
                                                           },
                                            "required":  [
                                                             "active",
+                                                            "completed",
                                                             "branch",
                                                             "session",
                                                             "current_commit",
+                                                            "first_bad_commit",
                                                             "steps"
                                                         ],
                                            "type":  "object"

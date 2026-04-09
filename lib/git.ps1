@@ -2301,11 +2301,13 @@ function Get-ToiJsonCommandSchemas {
         short_sha = $stringField
         subject = $stringField
     }
-    $bisectStateSchema = New-ToiObjectSchema -Description 'Bisect state output.' -Required @('active', 'branch', 'session', 'current_commit', 'steps') -Properties @{
+    $bisectStateSchema = New-ToiObjectSchema -Description 'Bisect state output.' -Required @('active', 'completed', 'branch', 'session', 'current_commit', 'first_bad_commit', 'steps') -Properties @{
         active = $booleanField
+        completed = $booleanField
         branch = $stringField
         session = (New-ToiSchemaField -Type 'object|null' -Description 'Stored bisect session metadata, if active.')
         current_commit = (New-ToiSchemaField -Type 'object|null' -Description 'Current bisect commit candidate, if active.')
+        first_bad_commit = (New-ToiSchemaField -Type 'object|null' -Description 'Detected first bad commit when the bisect converges.')
         steps = $stringArray
     }
     $contractSchema = New-ToiObjectSchema -Description 'Contract snapshot status.' -Required @('version', 'snapshot_matches', 'reason', 'path') -Properties @{
@@ -2520,11 +2522,13 @@ function Get-ToiJsonCommandSchemas {
                 ship = $shipAssessmentSchema
             })
         bisect_status = $bisectStateSchema
-        bisect_report = (New-ToiObjectSchema -Description 'Bisect report JSON output.' -Required @('active', 'branch', 'session', 'candidate', 'recorded_steps', 'recent_log') -Properties @{
+        bisect_report = (New-ToiObjectSchema -Description 'Bisect report JSON output.' -Required @('active', 'completed', 'branch', 'session', 'candidate', 'first_bad_commit', 'recorded_steps', 'recent_log') -Properties @{
                 active = $booleanField
+                completed = $booleanField
                 branch = $stringField
                 session = (New-ToiSchemaField -Type 'object|null' -Description 'Stored bisect session metadata, if active.')
                 candidate = (New-ToiSchemaField -Type 'object|null' -Description 'Current bisect candidate commit, if active.')
+                first_bad_commit = (New-ToiSchemaField -Type 'object|null' -Description 'Detected first bad commit when the bisect converges.')
                 recorded_steps = $numberField
                 recent_log = $stringArray
             })
@@ -2784,6 +2788,24 @@ function Get-ToiBisectLogLines {
     return @($result.Output)
 }
 
+function Get-ToiBisectCompletion {
+    param(
+        [string[]]$LogLines
+    )
+
+    $lines = @($LogLines)
+    $matchLine = $lines | Where-Object { $_ -match '^# first bad commit: \[([0-9a-f]+)\] (.+)$' } | Select-Object -Last 1
+    if (-not $matchLine) {
+        return $null
+    }
+
+    $null = ($matchLine -match '^# first bad commit: \[([0-9a-f]+)\] (.+)$')
+    return [PSCustomObject]@{
+        sha = $matches[1]
+        subject = $matches[2]
+    }
+}
+
 function Get-ToiBisectCurrentCommit {
     if (-not (Test-HasCommits)) {
         return $null
@@ -2808,6 +2830,7 @@ function Get-ToiBisectState {
     $currentCommit = if ($active) { Get-ToiBisectCurrentCommit } else { $null }
     $logLines = if ($active) { Get-ToiBisectLogLines } else { @() }
     $steps = @($logLines | Where-Object { $_ -and $_.Trim() -and $_ -notmatch '^#' })
+    $completion = if ($active) { Get-ToiBisectCompletion -LogLines $logLines } else { $null }
     $branchName = Get-CurrentBranchName
     if (-not $branchName) {
         $branchName = '(detached HEAD)'
@@ -2815,9 +2838,11 @@ function Get-ToiBisectState {
 
     return [PSCustomObject]@{
         active = $active
+        completed = ($null -ne $completion)
         branch = $branchName
         metadata = $metadata
         current_commit = $currentCommit
+        first_bad_commit = $completion
         steps = @($steps)
     }
 }
@@ -2830,6 +2855,7 @@ function Convert-ToiBisectStateToJsonModel {
 
     return [PSCustomObject]@{
         active = $State.active
+        completed = $State.completed
         branch = $State.branch
         session = if ($State.metadata) {
             [PSCustomObject]@{
@@ -2849,6 +2875,14 @@ function Convert-ToiBisectStateToJsonModel {
                 sha = $State.current_commit.sha
                 short_sha = $State.current_commit.short_sha
                 subject = $State.current_commit.subject
+            }
+        } else {
+            $null
+        }
+        first_bad_commit = if ($State.first_bad_commit) {
+            [PSCustomObject]@{
+                sha = $State.first_bad_commit.sha
+                subject = $State.first_bad_commit.subject
             }
         } else {
             $null
@@ -2942,11 +2976,13 @@ function Invoke-ToiBisectRun {
 }
 
 function Reset-ToiBisectSession {
+    $metadata = Get-ToiBisectMetadata
     if (-not (Test-ToiBisectActive)) {
         Remove-ToiBisectMetadata
         return [PSCustomObject]@{
             output = @()
             reset = $false
+            restored_branch = if ($metadata) { $metadata.started_branch } else { $null }
         }
     }
 
@@ -2956,6 +2992,7 @@ function Reset-ToiBisectSession {
     return [PSCustomObject]@{
         output = @($result.Output)
         reset = $true
+        restored_branch = if ($metadata) { $metadata.started_branch } else { $null }
     }
 }
 

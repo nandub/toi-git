@@ -55,7 +55,7 @@ function Invoke-ToiCommand {
             Write-KeyValue 'Completed' $state.completed
             Write-KeyValue 'Branch' $state.branch
 
-            if (-not $state.active) {
+            if (-not $state.active -and -not $state.completed) {
                 Write-InfoLine 'No active bisect session.'
                 return
             }
@@ -198,7 +198,7 @@ function Invoke-ToiCommand {
             }
 
             Write-Section 'Bisect Report'
-            if (-not $state.active) {
+            if (-not $state.active -and -not $state.completed) {
                 Write-InfoLine 'No active bisect session.'
                 return
             }

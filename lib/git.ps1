@@ -140,7 +140,12 @@ function Assert-InGitRepository {
 
 function Get-CurrentBranchName {
     $result = Invoke-Git -GitArguments @('branch', '--show-current')
-    return ($result.Output | Select-Object -First 1).Trim()
+    $branch = $result.Output | Select-Object -First 1
+    if ($null -eq $branch) {
+        return $null
+    }
+
+    return $branch.Trim()
 }
 
 function Get-StatusLines {
@@ -2806,6 +2811,33 @@ function Get-ToiBisectCompletion {
     }
 }
 
+function Get-ToiBisectCompletionFromOutput {
+    param(
+        [string[]]$OutputLines
+    )
+
+    $lines = @($OutputLines)
+    $matchLine = $lines | Where-Object { $_ -match '^([0-9a-f]{7,40}) is the first bad commit$' } | Select-Object -Last 1
+    if (-not $matchLine) {
+        return $null
+    }
+
+    $null = ($matchLine -match '^([0-9a-f]{7,40}) is the first bad commit$')
+    $sha = $matches[1]
+    $commitResult = Invoke-Git -GitArguments @('show', '-s', '--format=%s', $sha) -AllowFailure
+    $subject = if ($commitResult.ExitCode -eq 0 -and $commitResult.Output.Count -gt 0) {
+        $commitResult.Output[0]
+    }
+    else {
+        $null
+    }
+
+    return [PSCustomObject]@{
+        sha = $sha
+        subject = $subject
+    }
+}
+
 function Get-ToiBisectCurrentCommit {
     if (-not (Test-HasCommits)) {
         return $null
@@ -2831,6 +2863,12 @@ function Get-ToiBisectState {
     $logLines = if ($active) { Get-ToiBisectLogLines } else { @() }
     $steps = @($logLines | Where-Object { $_ -and $_.Trim() -and $_ -notmatch '^#' })
     $completion = if ($active) { Get-ToiBisectCompletion -LogLines $logLines } else { $null }
+    if (-not $completion -and $metadata -and $metadata.first_bad_commit) {
+        $completion = [PSCustomObject]@{
+            sha = $metadata.first_bad_commit.sha
+            subject = $metadata.first_bad_commit.subject
+        }
+    }
     $branchName = Get-CurrentBranchName
     if (-not $branchName) {
         $branchName = '(detached HEAD)'
@@ -2838,7 +2876,7 @@ function Get-ToiBisectState {
 
     return [PSCustomObject]@{
         active = $active
-        completed = ($null -ne $completion)
+        completed = (($null -ne $completion) -or ($metadata -and $metadata.completed))
         branch = $branchName
         metadata = $metadata
         current_commit = $currentCommit
@@ -2924,6 +2962,8 @@ function Start-ToiBisectSession {
         good_sha = $goodSha
         bad_sha = $badSha
         test_command = $null
+        completed = $false
+        first_bad_commit = $null
     }
     Set-ToiBisectMetadata -Metadata $metadata | Out-Null
 
@@ -2969,6 +3009,16 @@ function Invoke-ToiBisectRun {
         'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $CommandText
     )
 
+    $completion = Get-ToiBisectCompletionFromOutput -OutputLines $result.Output
+    if ($completion -and $metadata) {
+        $metadata.completed = $true
+        $metadata.first_bad_commit = [PSCustomObject]@{
+            sha = $completion.sha
+            subject = $completion.subject
+        }
+        Set-ToiBisectMetadata -Metadata $metadata | Out-Null
+    }
+
     return [PSCustomObject]@{
         output = @($result.Output)
         state = Get-ToiBisectState
@@ -2981,7 +3031,7 @@ function Reset-ToiBisectSession {
         Remove-ToiBisectMetadata
         return [PSCustomObject]@{
             output = @()
-            reset = $false
+            reset = [bool]$metadata
             restored_branch = if ($metadata) { $metadata.started_branch } else { $null }
         }
     }

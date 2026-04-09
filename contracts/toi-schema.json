@@ -1,5 +1,77 @@
 {
     "commands":  {
+                     "bisect_report":  {
+                                           "description":  "Bisect report JSON output.",
+                                           "properties":  {
+                                                              "active":  {
+                                                                             "type":  "boolean"
+                                                                         },
+                                                              "branch":  {
+                                                                             "type":  "string"
+                                                                         },
+                                                              "candidate":  {
+                                                                                "description":  "Current bisect candidate commit, if active.",
+                                                                                "type":  "object|null"
+                                                                            },
+                                                              "recent_log":  {
+                                                                                 "description":  "Array of strings.",
+                                                                                 "items":  {
+                                                                                               "type":  "string"
+                                                                                           },
+                                                                                 "type":  "array"
+                                                                             },
+                                                              "recorded_steps":  {
+                                                                                     "type":  "number"
+                                                                                 },
+                                                              "session":  {
+                                                                              "description":  "Stored bisect session metadata, if active.",
+                                                                              "type":  "object|null"
+                                                                          }
+                                                          },
+                                           "required":  [
+                                                            "active",
+                                                            "branch",
+                                                            "session",
+                                                            "candidate",
+                                                            "recorded_steps",
+                                                            "recent_log"
+                                                        ],
+                                           "type":  "object"
+                                       },
+                     "bisect_status":  {
+                                           "description":  "Bisect state output.",
+                                           "properties":  {
+                                                              "active":  {
+                                                                             "type":  "boolean"
+                                                                         },
+                                                              "branch":  {
+                                                                             "type":  "string"
+                                                                         },
+                                                              "current_commit":  {
+                                                                                     "description":  "Current bisect commit candidate, if active.",
+                                                                                     "type":  "object|null"
+                                                                                 },
+                                                              "session":  {
+                                                                              "description":  "Stored bisect session metadata, if active.",
+                                                                              "type":  "object|null"
+                                                                          },
+                                                              "steps":  {
+                                                                            "description":  "Array of strings.",
+                                                                            "items":  {
+                                                                                          "type":  "string"
+                                                                                      },
+                                                                            "type":  "array"
+                                                                        }
+                                                          },
+                                           "required":  [
+                                                            "active",
+                                                            "branch",
+                                                            "session",
+                                                            "current_commit",
+                                                            "steps"
+                                                        ],
+                                           "type":  "object"
+                                       },
                      "dashboard":  {
                                        "description":  "Dashboard command JSON output.",
                                        "properties":  {

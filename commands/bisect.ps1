@@ -3,21 +3,34 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
-    if ($Arguments.Count -eq 0) {
+    $json = $Arguments -contains '-Json'
+    $filteredArguments = @($Arguments | Where-Object { $_ -ne '-Json' })
+
+    if ($filteredArguments.Count -eq 0) {
         throw 'Usage: toi bisect <start|status|good|bad|skip|run|report|reset> [args]'
     }
 
-    $action = $Arguments[0].ToLowerInvariant()
+    $action = $filteredArguments[0].ToLowerInvariant()
 
     switch ($action) {
         'start' {
-            if ($Arguments.Count -lt 3) {
+            if ($filteredArguments.Count -lt 3) {
                 throw 'Usage: toi bisect start <good> <bad>'
             }
 
-            $goodRef = $Arguments[1]
-            $badRef = $Arguments[2]
+            $goodRef = $filteredArguments[1]
+            $badRef = $filteredArguments[2]
             $started = Start-ToiBisectSession -GoodRef $goodRef -BadRef $badRef
+
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'start'
+                    session = $started.metadata
+                    state = (Convert-ToiBisectStateToJsonModel -State $started.state)
+                    output = @($started.output)
+                })
+                return
+            }
 
             Write-Section 'Bisect'
             Write-InfoLine "Started: $($started.metadata.started_at)"
@@ -31,6 +44,11 @@ function Invoke-ToiCommand {
         }
         'status' {
             $state = Get-ToiBisectState
+
+            if ($json) {
+                Write-Json (Convert-ToiBisectStateToJsonModel -State $state)
+                return
+            }
 
             Write-Section 'Bisect'
             Write-KeyValue 'Active' $state.active
@@ -46,6 +64,8 @@ function Invoke-ToiCommand {
                 Write-KeyValue 'Started Branch' $state.metadata.started_branch
                 Write-KeyValue 'Good Ref' $state.metadata.good_ref
                 Write-KeyValue 'Bad Ref' $state.metadata.bad_ref
+                Write-KeyValue 'Good SHA' $state.metadata.good_sha
+                Write-KeyValue 'Bad SHA' $state.metadata.bad_sha
                 if ($state.metadata.test_command) {
                     Write-KeyValue 'Test Command' $state.metadata.test_command
                 }
@@ -63,6 +83,14 @@ function Invoke-ToiCommand {
         }
         'good' {
             $marked = Invoke-ToiBisectMark -Mark 'good'
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'good'
+                    state = (Convert-ToiBisectStateToJsonModel -State $marked.state)
+                    output = @($marked.output)
+                })
+                return
+            }
             Write-Section 'Bisect'
             Write-SuccessLine 'Marked current commit as good.'
             if ($marked.state.current_commit) {
@@ -72,6 +100,14 @@ function Invoke-ToiCommand {
         }
         'bad' {
             $marked = Invoke-ToiBisectMark -Mark 'bad'
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'bad'
+                    state = (Convert-ToiBisectStateToJsonModel -State $marked.state)
+                    output = @($marked.output)
+                })
+                return
+            }
             Write-Section 'Bisect'
             Write-WarningLine 'Marked current commit as bad.'
             if ($marked.state.current_commit) {
@@ -81,6 +117,14 @@ function Invoke-ToiCommand {
         }
         'skip' {
             $marked = Invoke-ToiBisectMark -Mark 'skip'
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'skip'
+                    state = (Convert-ToiBisectStateToJsonModel -State $marked.state)
+                    output = @($marked.output)
+                })
+                return
+            }
             Write-Section 'Bisect'
             Write-WarningLine 'Skipped current commit.'
             if ($marked.state.current_commit) {
@@ -89,12 +133,22 @@ function Invoke-ToiCommand {
             $marked.output | ForEach-Object { Write-Host $_ }
         }
         'run' {
-            if ($Arguments.Count -lt 2) {
+            if ($filteredArguments.Count -lt 2) {
                 throw 'Usage: toi bisect run <command>'
             }
 
-            $commandText = ($Arguments | Select-Object -Skip 1) -join ' '
+            $commandText = ($filteredArguments | Select-Object -Skip 1) -join ' '
             $runResult = Invoke-ToiBisectRun -CommandText $commandText
+
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'run'
+                    command = $commandText
+                    state = (Convert-ToiBisectStateToJsonModel -State $runResult.state)
+                    output = @($runResult.output)
+                })
+                return
+            }
 
             Write-Section 'Bisect'
             Write-InfoLine "Command: $commandText"
@@ -111,6 +165,30 @@ function Invoke-ToiCommand {
         'report' {
             $state = Get-ToiBisectState
 
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    active = $state.active
+                    branch = $state.branch
+                    session = if ($state.metadata) {
+                        [PSCustomObject]@{
+                            started_at = $state.metadata.started_at
+                            started_branch = $state.metadata.started_branch
+                            good_ref = $state.metadata.good_ref
+                            bad_ref = $state.metadata.bad_ref
+                            good_sha = $state.metadata.good_sha
+                            bad_sha = $state.metadata.bad_sha
+                            test_command = $state.metadata.test_command
+                        }
+                    } else {
+                        $null
+                    }
+                    candidate = $state.current_commit
+                    recorded_steps = $state.steps.Count
+                    recent_log = @($state.steps | Select-Object -Last 5)
+                })
+                return
+            }
+
             Write-Section 'Bisect Report'
             if (-not $state.active) {
                 Write-InfoLine 'No active bisect session.'
@@ -124,6 +202,8 @@ function Invoke-ToiCommand {
             if ($state.metadata) {
                 Write-KeyValue 'Good Ref' $state.metadata.good_ref
                 Write-KeyValue 'Bad Ref' $state.metadata.bad_ref
+                Write-KeyValue 'Good SHA' $state.metadata.good_sha
+                Write-KeyValue 'Bad SHA' $state.metadata.bad_sha
                 if ($state.metadata.test_command) {
                     Write-KeyValue 'Test Command' $state.metadata.test_command
                 }
@@ -136,6 +216,14 @@ function Invoke-ToiCommand {
         }
         'reset' {
             $resetResult = Reset-ToiBisectSession
+            if ($json) {
+                Write-Json ([PSCustomObject]@{
+                    action = 'reset'
+                    reset = $resetResult.reset
+                    output = @($resetResult.output)
+                })
+                return
+            }
             Write-Section 'Bisect'
             if (-not $resetResult.reset) {
                 Write-InfoLine 'No active bisect session.'

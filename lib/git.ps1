@@ -502,6 +502,34 @@ function Test-BranchExists {
     return (Test-RefExists -RefName "refs/heads/$BranchName")
 }
 
+function Resolve-CommitRef {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RefName
+    )
+
+    $result = Invoke-Git -GitArguments @('rev-parse', '--verify', "$RefName^{commit}") -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        return $null
+    }
+
+    return (($result.Output | Select-Object -First 1).Trim())
+}
+
+function Assert-CommitRefExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RefName
+    )
+
+    $resolved = Resolve-CommitRef -RefName $RefName
+    if (-not $resolved) {
+        throw "Ref '$RefName' does not resolve to a commit."
+    }
+
+    return $resolved
+}
+
 function Get-BranchBaseRef {
     param(
         [Parameter(Mandatory = $true)]
@@ -2259,6 +2287,27 @@ function Get-ToiJsonCommandSchemas {
     $policySchema = New-ToiObjectSchema -Description 'Active workflow policy flags.' -Required @('require_branch_note') -Properties @{
         require_branch_note = (New-ToiSchemaField -Type 'boolean' -Description 'Whether non-default branches require a local note.')
     }
+    $bisectSessionSchema = New-ToiObjectSchema -Description 'Stored bisect session metadata.' -Required @('started_at', 'started_branch', 'good_ref', 'bad_ref', 'good_sha', 'bad_sha', 'test_command') -Properties @{
+        started_at = (New-ToiSchemaField -Type 'string' -Description 'Local timestamp when the bisect session started.')
+        started_branch = (New-ToiSchemaField -Type 'string|null' -Description 'Branch name active before bisect detached HEAD.')
+        good_ref = (New-ToiSchemaField -Type 'string' -Description 'User-provided good ref.')
+        bad_ref = (New-ToiSchemaField -Type 'string' -Description 'User-provided bad ref.')
+        good_sha = (New-ToiSchemaField -Type 'string' -Description 'Resolved commit SHA for the good ref.')
+        bad_sha = (New-ToiSchemaField -Type 'string' -Description 'Resolved commit SHA for the bad ref.')
+        test_command = (New-ToiSchemaField -Type 'string|null' -Description 'Recorded bisect run command, if any.')
+    }
+    $bisectCommitSchema = New-ToiObjectSchema -Description 'Current bisect candidate commit.' -Required @('sha', 'short_sha', 'subject') -Properties @{
+        sha = $stringField
+        short_sha = $stringField
+        subject = $stringField
+    }
+    $bisectStateSchema = New-ToiObjectSchema -Description 'Bisect state output.' -Required @('active', 'branch', 'session', 'current_commit', 'steps') -Properties @{
+        active = $booleanField
+        branch = $stringField
+        session = (New-ToiSchemaField -Type 'object|null' -Description 'Stored bisect session metadata, if active.')
+        current_commit = (New-ToiSchemaField -Type 'object|null' -Description 'Current bisect commit candidate, if active.')
+        steps = $stringArray
+    }
     $contractSchema = New-ToiObjectSchema -Description 'Contract snapshot status.' -Required @('version', 'snapshot_matches', 'reason', 'path') -Properties @{
         version = (New-ToiSchemaField -Type 'string' -Description 'Current contract version.')
         snapshot_matches = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the committed snapshot matches the current contract output.')
@@ -2469,6 +2518,15 @@ function Get-ToiJsonCommandSchemas {
                 contract = $contractSchema
                 doctor = $doctorSchema
                 ship = $shipAssessmentSchema
+            })
+        bisect_status = $bisectStateSchema
+        bisect_report = (New-ToiObjectSchema -Description 'Bisect report JSON output.' -Required @('active', 'branch', 'session', 'candidate', 'recorded_steps', 'recent_log') -Properties @{
+                active = $booleanField
+                branch = $stringField
+                session = (New-ToiSchemaField -Type 'object|null' -Description 'Stored bisect session metadata, if active.')
+                candidate = (New-ToiSchemaField -Type 'object|null' -Description 'Current bisect candidate commit, if active.')
+                recorded_steps = $numberField
+                recent_log = $stringArray
             })
     }
 }
@@ -2764,6 +2822,41 @@ function Get-ToiBisectState {
     }
 }
 
+function Convert-ToiBisectStateToJsonModel {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$State
+    )
+
+    return [PSCustomObject]@{
+        active = $State.active
+        branch = $State.branch
+        session = if ($State.metadata) {
+            [PSCustomObject]@{
+                started_at = $State.metadata.started_at
+                started_branch = $State.metadata.started_branch
+                good_ref = $State.metadata.good_ref
+                bad_ref = $State.metadata.bad_ref
+                good_sha = $State.metadata.good_sha
+                bad_sha = $State.metadata.bad_sha
+                test_command = $State.metadata.test_command
+            }
+        } else {
+            $null
+        }
+        current_commit = if ($State.current_commit) {
+            [PSCustomObject]@{
+                sha = $State.current_commit.sha
+                short_sha = $State.current_commit.short_sha
+                subject = $State.current_commit.subject
+            }
+        } else {
+            $null
+        }
+        steps = @($State.steps)
+    }
+}
+
 function Start-ToiBisectSession {
     param(
         [Parameter(Mandatory = $true)]
@@ -2781,6 +2874,12 @@ function Start-ToiBisectSession {
         throw 'A bisect session is already active. Use `toi bisect status` or `toi bisect reset` first.'
     }
 
+    $goodSha = Assert-CommitRefExists -RefName $GoodRef
+    $badSha = Assert-CommitRefExists -RefName $BadRef
+    if ($goodSha -eq $badSha) {
+        throw 'Good and bad refs resolve to the same commit.'
+    }
+
     $startedBranch = Get-CurrentBranchName
     $result = Invoke-Git -GitArguments @('bisect', 'start', $BadRef, $GoodRef)
     $metadata = [PSCustomObject]@{
@@ -2788,6 +2887,8 @@ function Start-ToiBisectSession {
         started_branch = $startedBranch
         good_ref = $GoodRef
         bad_ref = $BadRef
+        good_sha = $goodSha
+        bad_sha = $badSha
         test_command = $null
     }
     Set-ToiBisectMetadata -Metadata $metadata | Out-Null

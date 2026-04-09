@@ -288,6 +288,8 @@ function Invoke-ToiCommand {
         @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published'); SchemaKey = 'status' },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },
         @{ Name = 'Version JSON'; Args = @('version', '-Json'); TimeoutSeconds = 15; Required = @('module_version', 'latest_tag'); SchemaKey = $null },
+        @{ Name = 'Bisect Status JSON'; Args = @('bisect', 'status', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'steps'); SchemaKey = 'bisect_status' },
+        @{ Name = 'Bisect Report JSON'; Args = @('bisect', 'report', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'recorded_steps', 'recent_log'); SchemaKey = 'bisect_report' },
         @{ Name = 'Report JSON'; Args = @('report', '-Json'); TimeoutSeconds = 20; Required = @('generated_at', 'snapshot', 'ship'); SchemaKey = 'report' },
         @{ Name = 'Schema JSON'; Args = @('schema', '-Json'); TimeoutSeconds = 20; Required = @('contract_version', 'commands') }
     )

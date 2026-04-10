@@ -26,6 +26,13 @@ If you change the GitHub Actions workflow or report output:
 .\tests\ci-artifacts.ps1
 ```
 
+If you change the bisect workflow:
+
+```powershell
+.\tests\bisect-smoke.ps1
+.\tests\self-check.ps1
+```
+
 ## GitHub-Aware Commands
 
 Some commands need a real GitHub context:

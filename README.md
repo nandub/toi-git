@@ -132,6 +132,8 @@ If you just want a fast repo check:
 
 - `dashboard`: consolidated workflow overview
 - `version`: module, tag, and current commit version info
+- `incoming`: show commits available from upstream without pulling
+- `outgoing`: show commits ready to push upstream
 - `bisect`: guided `git bisect` workflow with TOI state and reporting
 - `report`: workflow report in markdown or JSON
 - `schema`: JSON contract summary for automation consumers

@@ -548,6 +548,60 @@
                                                  ],
                                     "type":  "object"
                                 },
+                     "incoming":  {
+                                      "description":  "Incoming/outgoing commit delta.",
+                                      "properties":  {
+                                                         "available":  {
+                                                                           "type":  "boolean"
+                                                                       },
+                                                         "branch":  {
+                                                                        "type":  "string"
+                                                                    },
+                                                         "commits":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
+                                                         "compare_ref":  {
+                                                                             "description":  "Upstream or remote ref used for the comparison.",
+                                                                             "type":  "string|null"
+                                                                         },
+                                                         "count":  {
+                                                                       "type":  "number"
+                                                                   },
+                                                         "direction":  {
+                                                                           "type":  "string"
+                                                                       },
+                                                         "fetch_output":  {
+                                                                              "description":  "Array of strings.",
+                                                                              "items":  {
+                                                                                            "type":  "string"
+                                                                                        },
+                                                                              "type":  "array"
+                                                                          },
+                                                         "fetched":  {
+                                                                         "type":  "boolean"
+                                                                     },
+                                                         "reason":  {
+                                                                        "description":  "Human-readable explanation when no comparison is available.",
+                                                                        "type":  "string|null"
+                                                                    }
+                                                     },
+                                      "required":  [
+                                                       "branch",
+                                                       "direction",
+                                                       "compare_ref",
+                                                       "fetched",
+                                                       "fetch_output",
+                                                       "available",
+                                                       "reason",
+                                                       "count",
+                                                       "commits"
+                                                   ],
+                                      "type":  "object"
+                                  },
                      "next":  {
                                   "description":  "Next command JSON output.",
                                   "properties":  {
@@ -581,6 +635,60 @@
                                                ],
                                   "type":  "object"
                               },
+                     "outgoing":  {
+                                      "description":  "Incoming/outgoing commit delta.",
+                                      "properties":  {
+                                                         "available":  {
+                                                                           "type":  "boolean"
+                                                                       },
+                                                         "branch":  {
+                                                                        "type":  "string"
+                                                                    },
+                                                         "commits":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
+                                                         "compare_ref":  {
+                                                                             "description":  "Upstream or remote ref used for the comparison.",
+                                                                             "type":  "string|null"
+                                                                         },
+                                                         "count":  {
+                                                                       "type":  "number"
+                                                                   },
+                                                         "direction":  {
+                                                                           "type":  "string"
+                                                                       },
+                                                         "fetch_output":  {
+                                                                              "description":  "Array of strings.",
+                                                                              "items":  {
+                                                                                            "type":  "string"
+                                                                                        },
+                                                                              "type":  "array"
+                                                                          },
+                                                         "fetched":  {
+                                                                         "type":  "boolean"
+                                                                     },
+                                                         "reason":  {
+                                                                        "description":  "Human-readable explanation when no comparison is available.",
+                                                                        "type":  "string|null"
+                                                                    }
+                                                     },
+                                      "required":  [
+                                                       "branch",
+                                                       "direction",
+                                                       "compare_ref",
+                                                       "fetched",
+                                                       "fetch_output",
+                                                       "available",
+                                                       "reason",
+                                                       "count",
+                                                       "commits"
+                                                   ],
+                                      "type":  "object"
+                                  },
                      "pr":  {
                                 "description":  "PR status command JSON output.",
                                 "properties":  {

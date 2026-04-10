@@ -171,6 +171,8 @@ function Invoke-ToiCommand {
     $commandChecks = @(
         @{ Name = 'Help';      Args = @();            TimeoutSeconds = 10 },
         @{ Name = 'Status';    Args = @('status');    TimeoutSeconds = 15 },
+        @{ Name = 'Incoming';  Args = @('incoming');  TimeoutSeconds = 15 },
+        @{ Name = 'Outgoing';  Args = @('outgoing');  TimeoutSeconds = 15 },
         @{ Name = 'Dashboard'; Args = @('dashboard'); TimeoutSeconds = 20 },
         @{ Name = 'Version';   Args = @('version');   TimeoutSeconds = 15 },
         @{ Name = 'Install';   Args = @('install', 'profile', '-DryRun'); TimeoutSeconds = 15 },
@@ -287,6 +289,8 @@ function Invoke-ToiCommand {
 
     $jsonChecks = @(
         @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published'); SchemaKey = 'status' },
+        @{ Name = 'Incoming JSON'; Args = @('incoming', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'direction', 'available', 'count', 'commits'); SchemaKey = 'incoming' },
+        @{ Name = 'Outgoing JSON'; Args = @('outgoing', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'direction', 'available', 'count', 'commits'); SchemaKey = 'outgoing' },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },
         @{ Name = 'Version JSON'; Args = @('version', '-Json'); TimeoutSeconds = 15; Required = @('module_version', 'latest_tag'); SchemaKey = $null },
         @{ Name = 'Bisect Status JSON'; Args = @('bisect', 'status', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'steps'); SchemaKey = 'bisect_status' },

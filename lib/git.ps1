@@ -615,6 +615,101 @@ function Get-CommitRangeSummary {
     return @($result.Output | Where-Object { $_ -and $_.Trim() })
 }
 
+function Get-ToiIncomingCompareRef {
+    $upstreamRef = Get-UpstreamRef
+    if ($upstreamRef) {
+        return $upstreamRef
+    }
+
+    $branch = Get-CurrentBranchName
+    $defaultBranch = Get-DefaultBranchName
+    $remoteDefaultRef = Get-RemoteDefaultBranchRef
+
+    if ($branch -eq $defaultBranch -and $remoteDefaultRef) {
+        return $remoteDefaultRef
+    }
+
+    return $null
+}
+
+function Get-ToiOutgoingCompareRef {
+    $upstreamRef = Get-UpstreamRef
+    if ($upstreamRef) {
+        return $upstreamRef
+    }
+
+    $branch = Get-CurrentBranchName
+    if (Test-RemoteBranchExists -BranchName $branch) {
+        return (Get-BranchRemoteRef -BranchName $branch)
+    }
+
+    return $null
+}
+
+function Get-ToiCommitDelta {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('incoming', 'outgoing')]
+        [string]$Direction,
+
+        [switch]$Fetch
+    )
+
+    $branch = Get-CurrentBranchName
+    $fetchOutput = @()
+    if ($Fetch) {
+        $fetchResult = Invoke-Git -GitArguments @('fetch', '--all', '--prune')
+        $fetchOutput = @($fetchResult.Output)
+    }
+
+    $compareRef = if ($Direction -eq 'incoming') {
+        Get-ToiIncomingCompareRef
+    }
+    else {
+        Get-ToiOutgoingCompareRef
+    }
+
+    if (-not $compareRef) {
+        return [PSCustomObject]@{
+            branch = $branch
+            direction = $Direction
+            compare_ref = $null
+            fetched = [bool]$Fetch
+            fetch_output = @($fetchOutput)
+            available = $false
+            reason = if ($Direction -eq 'incoming') {
+                'No upstream or default remote branch is available for incoming comparison.'
+            }
+            else {
+                'No upstream or published remote branch is available for outgoing comparison.'
+            }
+            count = 0
+            commits = @()
+        }
+    }
+
+    $range = if ($Direction -eq 'incoming') {
+        "HEAD..$compareRef"
+    }
+    else {
+        "$compareRef..HEAD"
+    }
+
+    $commits = @(Get-CommitRangeSummary -BaseRef ($range -split '\.\.')[0] -HeadRef ($range -split '\.\.')[1])
+
+    return [PSCustomObject]@{
+        branch = $branch
+        direction = $Direction
+        compare_ref = $compareRef
+        fetched = [bool]$Fetch
+        fetch_output = @($fetchOutput)
+        available = $true
+        reason = $null
+        count = $commits.Count
+        commits = @($commits)
+    }
+}
+
 function Get-BranchBrowseUrl {
     param(
         [Parameter(Mandatory = $true)]
@@ -2330,6 +2425,17 @@ function Get-ToiJsonCommandSchemas {
         commit_range = $stringArray
         shippable = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the branch is shippable.')
     }
+    $commitDeltaSchema = New-ToiObjectSchema -Description 'Incoming/outgoing commit delta.' -Required @('branch', 'direction', 'compare_ref', 'fetched', 'fetch_output', 'available', 'reason', 'count', 'commits') -Properties @{
+        branch = $stringField
+        direction = $stringField
+        compare_ref = (New-ToiSchemaField -Type 'string|null' -Description 'Upstream or remote ref used for the comparison.')
+        fetched = $booleanField
+        fetch_output = $stringArray
+        available = $booleanField
+        reason = (New-ToiSchemaField -Type 'string|null' -Description 'Human-readable explanation when no comparison is available.')
+        count = $numberField
+        commits = $stringArray
+    }
     $selfCheckResultSchema = New-ToiObjectSchema -Description 'Per-check result.' -Required @('name', 'success', 'detail') -Properties @{
         name = $stringField
         success = $booleanField
@@ -2383,6 +2489,8 @@ function Get-ToiJsonCommandSchemas {
                 unstaged = $stringArray
                 untracked = $stringArray
             })
+        incoming = $commitDeltaSchema
+        outgoing = $commitDeltaSchema
         dashboard = (New-ToiObjectSchema -Description 'Dashboard command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract', 'next_actions') -Properties @{
                 branch = $branchSchema
                 working_tree = $workingTreeSchema

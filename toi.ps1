@@ -16,6 +16,8 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 $commandMap = @{
     'status'       = Join-Path $root 'commands\status.ps1'
+    'incoming'     = Join-Path $root 'commands\incoming.ps1'
+    'outgoing'     = Join-Path $root 'commands\outgoing.ps1'
     'summary'      = Join-Path $root 'commands\summary.ps1'
     'sync'         = Join-Path $root 'commands\sync.ps1'
     'commit'       = Join-Path $root 'commands\commit.ps1'
@@ -51,6 +53,8 @@ function Show-Help {
     Write-Host ''
     Write-Host 'Commands:'
     Write-Host '  status        Show compact branch and working tree status'
+    Write-Host '  incoming      Show commits available from upstream without pulling'
+    Write-Host '  outgoing      Show commits ready to push to upstream'
     Write-Host '  summary       Show recent commits and working tree overview'
     Write-Host '  sync          Fetch remotes and show branch tracking state'
     Write-Host '  commit        Create a commit with a message'

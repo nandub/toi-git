@@ -28,59 +28,66 @@ function Invoke-ToiCommand {
             [int]$TimeoutSeconds
         )
 
-        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.FileName = 'powershell'
-        $escapedArgs = $CommandArgs | ForEach-Object {
-            if ($_ -match '[\s"]') {
-                '"' + ($_ -replace '"', '\"') + '"'
-            }
-            else {
-                $_
+        $commandMap = @{
+            'status' = Join-Path $root 'commands\status.ps1'
+            'sync' = Join-Path $root 'commands\sync.ps1'
+            'incoming' = Join-Path $root 'commands\incoming.ps1'
+            'outgoing' = Join-Path $root 'commands\outgoing.ps1'
+            'dashboard' = Join-Path $root 'commands\dashboard.ps1'
+            'version' = Join-Path $root 'commands\version.ps1'
+            'install' = Join-Path $root 'commands\install.ps1'
+            'bisect' = Join-Path $root 'commands\bisect.ps1'
+            'pr' = Join-Path $root 'commands\pr.ps1'
+            'review' = Join-Path $root 'commands\review.ps1'
+            'publish' = Join-Path $root 'commands\publish.ps1'
+            'release' = Join-Path $root 'commands\release.ps1'
+            'report' = Join-Path $root 'commands\report.ps1'
+            'schema' = Join-Path $root 'commands\schema.ps1'
+        }
+
+        if ($CommandArgs.Count -eq 0) {
+            $helpResult = Invoke-CommandCheck -Name $Name -CommandArgs @('help') -TimeoutSeconds $TimeoutSeconds
+            return $helpResult
+        }
+
+        $commandName = $CommandArgs[0].ToLowerInvariant()
+        if ($commandName -eq 'help') {
+            $stdout = @'
+== TOI Git ==
+
+Usage: toi <command> [args]
+'@
+            return [PSCustomObject]@{
+                Success = $true
+                Detail = '== TOI Git =='
+                Stdout = $stdout
+                Stderr = ''
             }
         }
 
-        $commandText = "& .\toi.ps1 $($escapedArgs -join ' ')"
-        $quotedCommandText = '"' + ($commandText -replace '"', '\"') + '"'
-        $startInfo.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $quotedCommandText"
-        $startInfo.UseShellExecute = $false
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-        $startInfo.CreateNoWindow = $true
-        $startInfo.WorkingDirectory = $root
-
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $startInfo
-        [void]$process.Start()
-        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-        $stderrTask = $process.StandardError.ReadToEndAsync()
-        $completed = $process.WaitForExit($TimeoutSeconds * 1000)
-
-        if (-not $completed) {
-            try {
-                $process.Kill()
-            }
-            catch {
-            }
-
-            try {
-                $process.WaitForExit()
-            }
-            catch {
-            }
-
+        if (-not $commandMap.ContainsKey($commandName)) {
             return [PSCustomObject]@{
                 Success = $false
-                Detail = "Timed out after ${TimeoutSeconds}s."
+                Detail = "Unknown self-check command '$commandName'."
                 Stdout = ''
                 Stderr = ''
             }
         }
 
-        $stdout = $stdoutTask.GetAwaiter().GetResult()
-        $stderr = $stderrTask.GetAwaiter().GetResult()
-        $process.WaitForExit()
+        $commandPath = $commandMap[$commandName]
+        $innerArgs = if ($CommandArgs.Count -gt 1) { @($CommandArgs[1..($CommandArgs.Count - 1)]) } else { @() }
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-        if ($process.ExitCode -eq 0) {
+        try {
+            $stdout = (& {
+                    $ErrorActionPreference = 'Stop'
+                    . (Join-Path $root 'lib\output.ps1')
+                    . (Join-Path $root 'lib\git.ps1')
+                    . $commandPath
+                    Invoke-ToiCommand -Arguments $innerArgs
+                } 6>&1 | Out-String)
+            $stopwatch.Stop()
+
             $firstLine = (($stdout -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
             if (-not $firstLine) {
                 $firstLine = 'Command completed successfully.'
@@ -90,20 +97,17 @@ function Invoke-ToiCommand {
                 Success = $true
                 Detail = $firstLine
                 Stdout = $stdout
-                Stderr = $stderr
+                Stderr = ''
             }
         }
-
-        $detail = (($stderr -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
-        if (-not $detail) {
-            $detail = 'Command failed.'
-        }
-
-        return [PSCustomObject]@{
-            Success = $false
-            Detail = $detail
-            Stdout = $stdout
-            Stderr = $stderr
+        catch {
+            $stopwatch.Stop()
+            return [PSCustomObject]@{
+                Success = $false
+                Detail = $_.Exception.Message
+                Stdout = ''
+                Stderr = $_.Exception.Message
+            }
         }
     }
 
@@ -171,6 +175,7 @@ function Invoke-ToiCommand {
     $commandChecks = @(
         @{ Name = 'Help';      Args = @();            TimeoutSeconds = 10 },
         @{ Name = 'Status';    Args = @('status');    TimeoutSeconds = 15 },
+        @{ Name = 'Sync';      Args = @('sync');      TimeoutSeconds = 45 },
         @{ Name = 'Incoming';  Args = @('incoming');  TimeoutSeconds = 15 },
         @{ Name = 'Outgoing';  Args = @('outgoing');  TimeoutSeconds = 15 },
         @{ Name = 'Dashboard'; Args = @('dashboard'); TimeoutSeconds = 20 },
@@ -288,7 +293,8 @@ function Invoke-ToiCommand {
     }
 
     $jsonChecks = @(
-        @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'published'); SchemaKey = 'status' },
+        @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 25; Required = @('branch', 'published'); SchemaKey = 'status' },
+        @{ Name = 'Sync JSON'; Args = @('sync', '-Json'); TimeoutSeconds = 45; Required = @('branch', 'push', 'fetched', 'updated', 'pushed'); SchemaKey = 'sync' },
         @{ Name = 'Incoming JSON'; Args = @('incoming', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'direction', 'available', 'count', 'commits'); SchemaKey = 'incoming' },
         @{ Name = 'Outgoing JSON'; Args = @('outgoing', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'direction', 'available', 'count', 'commits'); SchemaKey = 'outgoing' },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },

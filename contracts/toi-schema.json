@@ -1955,7 +1955,102 @@
                                                      "untracked"
                                                  ],
                                     "type":  "object"
-                                }
+                                },
+                     "sync":  {
+                                  "description":  "Sync command JSON output.",
+                                  "properties":  {
+                                                     "ahead":  {
+                                                                   "description":  "Commits ahead of upstream after sync.",
+                                                                   "type":  "number|null"
+                                                               },
+                                                     "behind":  {
+                                                                    "description":  "Commits behind upstream after sync.",
+                                                                    "type":  "number|null"
+                                                                },
+                                                     "branch":  {
+                                                                    "type":  "string"
+                                                                },
+                                                     "clean":  {
+                                                                   "type":  "boolean"
+                                                               },
+                                                     "fetch_output":  {
+                                                                          "description":  "Array of strings.",
+                                                                          "items":  {
+                                                                                        "type":  "string"
+                                                                                    },
+                                                                          "type":  "array"
+                                                                      },
+                                                     "fetch_reason":  {
+                                                                          "description":  "Explanation when fetch was skipped or failed.",
+                                                                          "type":  "string|null"
+                                                                      },
+                                                     "fetched":  {
+                                                                     "type":  "boolean"
+                                                                 },
+                                                     "push":  {
+                                                                  "type":  "boolean"
+                                                              },
+                                                     "push_output":  {
+                                                                         "description":  "Array of strings.",
+                                                                         "items":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "type":  "array"
+                                                                     },
+                                                     "push_reason":  {
+                                                                         "description":  "Explanation when push was skipped or blocked.",
+                                                                         "type":  "string|null"
+                                                                     },
+                                                     "pushed":  {
+                                                                    "type":  "boolean"
+                                                                },
+                                                     "sync_strategy":  {
+                                                                           "type":  "string"
+                                                                       },
+                                                     "tracking_ref":  {
+                                                                          "description":  "Ref used for the sync comparison/update path.",
+                                                                          "type":  "string|null"
+                                                                      },
+                                                     "update_mode":  {
+                                                                         "description":  "Update mode used during sync.",
+                                                                         "type":  "string|null"
+                                                                     },
+                                                     "update_output":  {
+                                                                           "description":  "Array of strings.",
+                                                                           "items":  {
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                           "type":  "array"
+                                                                       },
+                                                     "updated":  {
+                                                                     "type":  "boolean"
+                                                                 },
+                                                     "upstream":  {
+                                                                      "description":  "Current upstream ref after sync.",
+                                                                      "type":  "string|null"
+                                                                  }
+                                                 },
+                                  "required":  [
+                                                   "branch",
+                                                   "push",
+                                                   "clean",
+                                                   "sync_strategy",
+                                                   "tracking_ref",
+                                                   "upstream",
+                                                   "fetched",
+                                                   "fetch_output",
+                                                   "fetch_reason",
+                                                   "updated",
+                                                   "update_mode",
+                                                   "update_output",
+                                                   "ahead",
+                                                   "behind",
+                                                   "pushed",
+                                                   "push_output",
+                                                   "push_reason"
+                                               ],
+                                  "type":  "object"
+                              }
                  },
     "contract_version":  "1.0.0"
 }

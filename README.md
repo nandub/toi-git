@@ -134,6 +134,7 @@ If you just want a fast repo check:
 - `version`: module, tag, and current commit version info
 - `incoming`: show commits available from upstream without pulling
 - `outgoing`: show commits ready to push upstream
+- `sync -Push`: refresh a stale PR branch by fetching, updating, and pushing when safe
 - `bisect`: guided `git bisect` workflow with TOI state and reporting
 - `report`: workflow report in markdown or JSON
 - `schema`: JSON contract summary for automation consumers

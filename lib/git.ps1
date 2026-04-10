@@ -70,6 +70,108 @@ function Invoke-Git {
     }
 }
 
+function Invoke-GitWithTimeout {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$GitArguments,
+
+        [int]$TimeoutSeconds = 30,
+
+        [switch]$DisablePrompt,
+
+        [switch]$AllowFailure
+    )
+
+    $quotedArguments = $GitArguments | ForEach-Object {
+        if ($_ -match '[\s"]') {
+            '"' + ($_ -replace '(\\*)"', '$1$1\"') + '"'
+        }
+        else {
+            $_
+        }
+    }
+
+    $argumentString = $quotedArguments -join ' '
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = 'git'
+    $startInfo.Arguments = $argumentString
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+    $currentLocation = Get-Location
+    if ($currentLocation -and $currentLocation.Provider -and $currentLocation.Provider.Name -eq 'FileSystem') {
+        $startInfo.WorkingDirectory = $currentLocation.ProviderPath
+    }
+
+    $configuredSshCommand = git config --global --get core.sshCommand 2>$null
+    if (-not $configuredSshCommand) {
+        $startInfo.EnvironmentVariables['GIT_SSH_COMMAND'] = 'C:/Windows/System32/OpenSSH/ssh.exe'
+    }
+
+    if ($DisablePrompt) {
+        $startInfo.EnvironmentVariables['GIT_TERMINAL_PROMPT'] = '0'
+    }
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+
+    if (-not $completed) {
+        try {
+            $process.Kill()
+        }
+        catch {
+        }
+
+        try {
+            $process.WaitForExit()
+        }
+        catch {
+        }
+
+        $timeoutResult = [PSCustomObject]@{
+            Output = @("Git command timed out after ${TimeoutSeconds}s.")
+            ExitCode = -1
+            TimedOut = $true
+        }
+
+        if (-not $AllowFailure) {
+            throw ($timeoutResult.Output -join [Environment]::NewLine)
+        }
+
+        return $timeoutResult
+    }
+
+    $stdout = $stdoutTask.GetAwaiter().GetResult()
+    $stderr = $stderrTask.GetAwaiter().GetResult()
+    $process.WaitForExit()
+    $result = @()
+    if ($stdout) {
+        $result += ($stdout -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
+    }
+
+    if ($stderr) {
+        $result += ($stderr -split "(`r`n|`n|`r)" | Where-Object { $_ -and $_.Trim() })
+    }
+
+    $finalResult = [PSCustomObject]@{
+        Output = @($result)
+        ExitCode = $process.ExitCode
+        TimedOut = $false
+    }
+
+    if (-not $AllowFailure -and $finalResult.ExitCode -ne 0) {
+        $message = if ($finalResult.Output) { ($finalResult.Output -join [Environment]::NewLine) } else { 'Git command failed.' }
+        throw $message
+    }
+
+    return $finalResult
+}
+
 function Invoke-GitInteractive {
     param(
         [Parameter(Mandatory = $true)]
@@ -781,6 +883,18 @@ function Test-ToiGitHubAuthError {
     }
 
     return $Message -match 'Requires authentication|gh\.exe is not authenticated|HTTP 401|set the GH_TOKEN environment variable|GH_TOKEN'
+}
+
+function Test-ToiGitTransportError {
+    param(
+        [string]$Message
+    )
+
+    if (-not $Message) {
+        return $false
+    }
+
+    return $Message -match "couldn't create signal pipe|Could not read from remote repository|Permission denied \(publickey\)|Authentication failed|Enter passphrase|timed out after"
 }
 
 function Invoke-GitHubCli {
@@ -2355,6 +2469,25 @@ function Get-ToiJsonCommandSchemas {
         success = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the validation command succeeded.')
         exit_code = (New-ToiSchemaField -Type 'number' -Description 'Validation command exit code.')
     }
+    $syncSchema = New-ToiObjectSchema -Description 'Sync command JSON output.' -Required @('branch', 'push', 'clean', 'sync_strategy', 'tracking_ref', 'upstream', 'fetched', 'fetch_output', 'fetch_reason', 'updated', 'update_mode', 'update_output', 'ahead', 'behind', 'pushed', 'push_output', 'push_reason') -Properties @{
+        branch = $stringField
+        push = $booleanField
+        clean = $booleanField
+        sync_strategy = $stringField
+        tracking_ref = (New-ToiSchemaField -Type 'string|null' -Description 'Ref used for the sync comparison/update path.')
+        upstream = (New-ToiSchemaField -Type 'string|null' -Description 'Current upstream ref after sync.')
+        fetched = $booleanField
+        fetch_output = $stringArray
+        fetch_reason = (New-ToiSchemaField -Type 'string|null' -Description 'Explanation when fetch was skipped or failed.')
+        updated = $booleanField
+        update_mode = (New-ToiSchemaField -Type 'string|null' -Description 'Update mode used during sync.')
+        update_output = $stringArray
+        ahead = (New-ToiSchemaField -Type 'number|null' -Description 'Commits ahead of upstream after sync.')
+        behind = (New-ToiSchemaField -Type 'number|null' -Description 'Commits behind upstream after sync.')
+        pushed = $booleanField
+        push_output = $stringArray
+        push_reason = (New-ToiSchemaField -Type 'string|null' -Description 'Explanation when push was skipped or blocked.')
+    }
     $qualityGateArray = New-ToiArraySchema -Description 'Array of quality gate results.' -Items $qualityGateResultSchema
     $branchSchema = New-ToiObjectSchema -Description 'Branch-level workflow metadata.' -Required @('current', 'type', 'default', 'published', 'note', 'commit_convention') -Properties @{
         current = (New-ToiSchemaField -Type 'string' -Description 'Current branch name.')
@@ -2489,6 +2622,7 @@ function Get-ToiJsonCommandSchemas {
                 unstaged = $stringArray
                 untracked = $stringArray
             })
+        sync = $syncSchema
         incoming = $commitDeltaSchema
         outgoing = $commitDeltaSchema
         dashboard = (New-ToiObjectSchema -Description 'Dashboard command JSON output.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract', 'next_actions') -Properties @{

@@ -110,6 +110,9 @@ function Invoke-ToiCommand {
         else {
             $pushResult = Invoke-GitInteractive -GitArguments @('push')
             $pushed = $true
+            $postUpstreamRef = Get-UpstreamRef
+            $postTrackingRef = if ($postUpstreamRef) { $postUpstreamRef } elseif ($branch -eq $defaultBranch) { Get-RemoteDefaultBranchRef } else { $null }
+            $aheadBehind = if ($postTrackingRef) { Get-AheadBehind -LeftRef $postTrackingRef -RightRef 'HEAD' } else { $null }
         }
     }
 

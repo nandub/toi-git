@@ -193,7 +193,12 @@ function Invoke-ToiCommand {
     if ($push) {
         Write-Section 'Push'
         if ($pushed) {
-            $pushResult.Output | ForEach-Object { Write-Host $_ }
+            if ($pushResult.Output.Count -gt 0) {
+                $pushResult.Output | ForEach-Object { Write-Host $_ }
+            }
+            else {
+                Write-SuccessLine 'Push completed.'
+            }
         }
         else {
             Write-InfoLine $pushReason

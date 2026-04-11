@@ -695,8 +695,8 @@ function Get-AheadBehind {
     }
 
     return [PSCustomObject]@{
-        LeftAhead  = [int]$parts[0]
-        RightAhead = [int]$parts[1]
+        LeftAhead  = [int]$parts[1]
+        RightAhead = [int]$parts[0]
     }
 }
 
@@ -1952,14 +1952,14 @@ function Get-ToiWorkflowSnapshot {
 
     $upstreamTracking = $null
     if ($upstreamRef) {
-        $upstreamTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $upstreamRef
+        $upstreamTracking = Get-AheadBehind -LeftRef $upstreamRef -RightRef 'HEAD'
     }
 
     $defaultTracking = $null
     if ($branch -ne $defaultBranch) {
         $defaultCompareRef = Get-DefaultBranchComparisonRef
         if ($defaultCompareRef) {
-            $defaultTracking = Get-AheadBehind -LeftRef 'HEAD' -RightRef $defaultCompareRef
+            $defaultTracking = Get-AheadBehind -LeftRef $defaultCompareRef -RightRef 'HEAD'
         }
     }
 

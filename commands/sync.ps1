@@ -37,6 +37,20 @@ function Invoke-ToiCommand {
         }
     }
 
+    if ($push -and -not $fetchSucceeded -and (Test-ToiGitTransportError -Message $fetchReason)) {
+        $fetchResult = Invoke-GitInteractive -GitArguments @('fetch', '--all', '--prune') -AllowFailure
+        $fetchSucceeded = ($fetchResult.ExitCode -eq 0)
+        $fetchReason = if ($fetchSucceeded) {
+            $null
+        }
+        elseif ($fetchResult.Output.Count -gt 0) {
+            $fetchResult.Output -join [Environment]::NewLine
+        }
+        else {
+            'Fetch failed.'
+        }
+    }
+
     $trackingRef = $upstreamRef
     if (-not $trackingRef -and $branch -eq $defaultBranch -and $remoteDefaultRef) {
         $trackingRef = $remoteDefaultRef

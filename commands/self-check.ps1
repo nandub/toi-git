@@ -176,6 +176,7 @@ Usage: toi <command> [args]
         @{ Name = 'Help';      Args = @();            TimeoutSeconds = 10 },
         @{ Name = 'Status';    Args = @('status');    TimeoutSeconds = 15 },
         @{ Name = 'Sync';      Args = @('sync');      TimeoutSeconds = 45 },
+        @{ Name = 'Sync Dry Run'; Args = @('sync', '-DryRun'); TimeoutSeconds = 20 },
         @{ Name = 'Incoming';  Args = @('incoming');  TimeoutSeconds = 15 },
         @{ Name = 'Outgoing';  Args = @('outgoing');  TimeoutSeconds = 15 },
         @{ Name = 'Dashboard'; Args = @('dashboard'); TimeoutSeconds = 20 },
@@ -294,7 +295,8 @@ Usage: toi <command> [args]
 
     $jsonChecks = @(
         @{ Name = 'Status JSON'; Args = @('status', '-Json'); TimeoutSeconds = 25; Required = @('branch', 'published'); SchemaKey = 'status' },
-        @{ Name = 'Sync JSON'; Args = @('sync', '-Json'); TimeoutSeconds = 45; Required = @('branch', 'push', 'fetched', 'updated', 'pushed'); SchemaKey = 'sync' },
+        @{ Name = 'Sync JSON'; Args = @('sync', '-Json'); TimeoutSeconds = 45; Required = @('branch', 'push', 'dry_run', 'fetched', 'updated', 'pushed'); SchemaKey = 'sync' },
+        @{ Name = 'Sync Dry Run JSON'; Args = @('sync', '-DryRun', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'push', 'dry_run', 'would_fetch', 'would_update', 'would_push'); SchemaKey = 'sync' },
         @{ Name = 'Incoming JSON'; Args = @('incoming', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'direction', 'available', 'count', 'commits'); SchemaKey = 'incoming' },
         @{ Name = 'Outgoing JSON'; Args = @('outgoing', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'direction', 'available', 'count', 'commits'); SchemaKey = 'outgoing' },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },

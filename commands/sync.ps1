@@ -5,6 +5,7 @@ function Invoke-ToiCommand {
 
     $json = $Arguments -contains '-Json'
     $push = $Arguments -contains '-Push'
+    $dryRun = $Arguments -contains '-DryRun'
     $branch = Get-CurrentBranchName
     $upstreamRef = Get-UpstreamRef
     $syncStrategy = Get-SyncStrategy
@@ -18,6 +19,7 @@ function Invoke-ToiCommand {
                 blocked = $true
                 reason = "Refusing to push from protected branch '$branch'."
                 branch = $branch
+                dry_run = $dryRun
             })
             return
         }
@@ -56,15 +58,136 @@ function Invoke-ToiCommand {
         $trackingRef = $remoteDefaultRef
     }
 
+    $trackingAvailable = [bool]$trackingRef
+    $clean = Test-WorkingTreeClean
+    $preAheadBehind = if ($trackingRef) { Get-AheadBehind -LeftRef $trackingRef -RightRef 'HEAD' } else { $null }
+    $plannedUpdateMode = $null
+    $plannedUpdateReason = $null
+    $wouldFetch = $true
+    $wouldUpdate = $false
+    $wouldPush = $false
+
+    if ($trackingAvailable -and $clean) {
+        if ($upstreamRef -or ($branch -eq $defaultBranch -and $remoteDefaultRef)) {
+            $plannedUpdateMode = if ($syncStrategy -eq 'rebase') { 'rebase' } else { 'merge-ff-only' }
+            $wouldUpdate = $true
+        }
+    }
+    elseif (-not $clean) {
+        $plannedUpdateReason = 'Working tree is not clean.'
+    }
+    else {
+        $plannedUpdateReason = 'No upstream or remote default branch is available for local sync.'
+    }
+
+    if ($push) {
+        if (-not $clean) {
+            $plannedPushReason = 'Working tree is not clean. Push would be skipped.'
+        }
+        elseif (-not $upstreamRef) {
+            $plannedPushReason = 'No upstream is configured for the current branch. Use `toi publish` to push it first.'
+        }
+        elseif ($preAheadBehind -and $preAheadBehind.RightAhead -gt 0) {
+            $plannedPushReason = 'Branch is behind its upstream and would need to sync cleanly before push.'
+        }
+        elseif ($preAheadBehind -and $preAheadBehind.LeftAhead -eq 0) {
+            $plannedPushReason = 'No local commits to push.'
+        }
+        else {
+            $plannedPushReason = $null
+            $wouldPush = $true
+        }
+    }
+    else {
+        $plannedPushReason = $null
+    }
+
+    if ($dryRun) {
+        $result = [PSCustomObject]@{
+            branch = $branch
+            push = $push
+            dry_run = $true
+            clean = $clean
+            sync_strategy = $syncStrategy
+            tracking_ref = $trackingRef
+            upstream = $upstreamRef
+            fetched = $false
+            fetch_output = @()
+            fetch_reason = 'Dry run: fetch was not executed.'
+            updated = $false
+            update_mode = $plannedUpdateMode
+            update_output = @()
+            ahead = if ($preAheadBehind) { $preAheadBehind.LeftAhead } else { $null }
+            behind = if ($preAheadBehind) { $preAheadBehind.RightAhead } else { $null }
+            pushed = $false
+            push_output = @()
+            push_reason = $plannedPushReason
+            would_fetch = $wouldFetch
+            would_update = $wouldUpdate
+            would_push = $wouldPush
+            update_reason = $plannedUpdateReason
+        }
+
+        if ($json) {
+            Write-Json $result
+            return
+        }
+
+        Write-Section 'Sync'
+        Write-KeyValue 'Branch' $branch
+        Write-KeyValue 'Push' $push
+        Write-KeyValue 'Dry Run' $true
+        Write-KeyValue 'Sync Strategy' $syncStrategy
+
+        Write-Section 'Fetch'
+        Write-InfoLine 'Would fetch remotes.'
+
+        Write-Section 'Tracking'
+        if ($trackingRef) {
+            Write-KeyValue 'Compare Ref' $trackingRef
+        }
+        else {
+            Write-InfoLine 'No upstream configured for the current branch.'
+        }
+
+        Write-Section 'Update'
+        if ($wouldUpdate) {
+            Write-InfoLine "Would run $plannedUpdateMode against $trackingRef."
+        }
+        else {
+            if ($plannedUpdateReason) {
+                Write-InfoLine $plannedUpdateReason
+            }
+            else {
+                Write-InfoLine 'No local update would run.'
+            }
+        }
+
+        if ($null -ne $result.ahead -or $null -ne $result.behind) {
+            Write-Section 'Upstream'
+            Write-KeyValue 'Ahead' $result.ahead
+            Write-KeyValue 'Behind' $result.behind
+        }
+
+        if ($push) {
+            Write-Section 'Push'
+            if ($wouldPush) {
+                Write-InfoLine 'Would push local commits after sync.'
+            }
+            else {
+                Write-InfoLine $plannedPushReason
+            }
+        }
+
+        return
+    }
+
     $updateMode = $null
     $updateResult = [PSCustomObject]@{
         Output = @()
         ExitCode = 0
     }
     $updated = $false
-    $trackingAvailable = [bool]$trackingRef
-    $clean = Test-WorkingTreeClean
-
     if ($fetchSucceeded -and $trackingAvailable -and $clean) {
         if ($upstreamRef -or ($branch -eq $defaultBranch -and $remoteDefaultRef)) {
             if ($syncStrategy -eq 'rebase') {
@@ -119,6 +242,7 @@ function Invoke-ToiCommand {
     $result = [PSCustomObject]@{
         branch = $branch
         push = $push
+        dry_run = $false
         clean = $clean
         sync_strategy = $syncStrategy
         tracking_ref = $trackingRef
@@ -134,6 +258,10 @@ function Invoke-ToiCommand {
         pushed = $pushed
         push_output = @($pushResult.Output)
         push_reason = $pushReason
+        would_fetch = $null
+        would_update = $null
+        would_push = $null
+        update_reason = $null
     }
 
     if ($json) {
@@ -144,6 +272,7 @@ function Invoke-ToiCommand {
     Write-Section 'Sync'
     Write-KeyValue 'Branch' $branch
     Write-KeyValue 'Push' $push
+    Write-KeyValue 'Dry Run' $false
     Write-KeyValue 'Sync Strategy' $syncStrategy
 
     Write-Section 'Fetch'

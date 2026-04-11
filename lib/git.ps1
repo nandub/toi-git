@@ -1302,6 +1302,14 @@ function Get-ToiPullRequestGateStatus {
     $summary = Get-ToiPullRequestChecksSummary -Checks $checks
     $requestedReviewers = @(Get-ToiPullRequestRequestedReviewers -PullRequest $pr)
     $reviewSummary = Get-ToiPullRequestLatestReviewSummary -PullRequest $pr
+    $defaultBranchBehind = 0
+    $defaultCompareRef = Get-DefaultBranchComparisonRef
+    if ($defaultCompareRef) {
+        $defaultTracking = Get-AheadBehind -LeftRef $defaultCompareRef -RightRef 'HEAD'
+        if ($defaultTracking) {
+            $defaultBranchBehind = $defaultTracking.RightAhead
+        }
+    }
     $blockers = New-Object System.Collections.Generic.List[string]
     $warnings = New-Object System.Collections.Generic.List[string]
 
@@ -1344,6 +1352,10 @@ function Get-ToiPullRequestGateStatus {
         default { }
     }
 
+    if ($defaultBranchBehind -gt 0) {
+        $warnings.Add("Local branch is behind the default branch by $defaultBranchBehind commit(s).")
+    }
+
     if ($checks.Count -eq 0) {
         $warnings.Add('No required checks were returned by GitHub.')
     }
@@ -1359,6 +1371,10 @@ function Get-ToiPullRequestGateStatus {
         $recommendedAction = 'ready'
         $recommendedCommand = '.\toi.ps1 pr ready'
     }
+    elseif ($pr.mergeStateStatus -eq 'BEHIND' -or $defaultBranchBehind -gt 0 -or $pr.mergeStateStatus -eq 'UNSTABLE') {
+        $recommendedAction = 'sync-branch'
+        $recommendedCommand = '.\toi.ps1 sync -Push'
+    }
     elseif ($requestedReviewers.Count -gt 0 -or $pr.reviewDecision -eq 'REVIEW_REQUIRED') {
         $recommendedAction = 'wait-for-review'
         $recommendedCommand = '.\toi.ps1 pr status'
@@ -1370,10 +1386,6 @@ function Get-ToiPullRequestGateStatus {
     elseif ($summary.fail -gt 0) {
         $recommendedAction = 'fix-checks'
         $recommendedCommand = '.\toi.ps1 pr checks -Required'
-    }
-    elseif ($pr.mergeStateStatus -eq 'BEHIND') {
-        $recommendedAction = 'sync-branch'
-        $recommendedCommand = '.\toi.ps1 sync'
     }
     elseif ($pr.reviewDecision -eq 'CHANGES_REQUESTED') {
         $recommendedAction = 'address-review'
@@ -2469,9 +2481,10 @@ function Get-ToiJsonCommandSchemas {
         success = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the validation command succeeded.')
         exit_code = (New-ToiSchemaField -Type 'number' -Description 'Validation command exit code.')
     }
-    $syncSchema = New-ToiObjectSchema -Description 'Sync command JSON output.' -Required @('branch', 'push', 'clean', 'sync_strategy', 'tracking_ref', 'upstream', 'fetched', 'fetch_output', 'fetch_reason', 'updated', 'update_mode', 'update_output', 'ahead', 'behind', 'pushed', 'push_output', 'push_reason') -Properties @{
+    $syncSchema = New-ToiObjectSchema -Description 'Sync command JSON output.' -Required @('branch', 'push', 'dry_run', 'clean', 'sync_strategy', 'tracking_ref', 'upstream', 'fetched', 'fetch_output', 'fetch_reason', 'updated', 'update_mode', 'update_output', 'ahead', 'behind', 'pushed', 'push_output', 'push_reason', 'would_fetch', 'would_update', 'would_push', 'update_reason') -Properties @{
         branch = $stringField
         push = $booleanField
+        dry_run = $booleanField
         clean = $booleanField
         sync_strategy = $stringField
         tracking_ref = (New-ToiSchemaField -Type 'string|null' -Description 'Ref used for the sync comparison/update path.')
@@ -2487,6 +2500,10 @@ function Get-ToiJsonCommandSchemas {
         pushed = $booleanField
         push_output = $stringArray
         push_reason = (New-ToiSchemaField -Type 'string|null' -Description 'Explanation when push was skipped or blocked.')
+        would_fetch = (New-ToiSchemaField -Type 'boolean|null' -Description 'Whether a dry-run would fetch remotes.')
+        would_update = (New-ToiSchemaField -Type 'boolean|null' -Description 'Whether a dry-run would update the local branch.')
+        would_push = (New-ToiSchemaField -Type 'boolean|null' -Description 'Whether a dry-run would push local commits.')
+        update_reason = (New-ToiSchemaField -Type 'string|null' -Description 'Explanation when local update would be skipped.')
     }
     $qualityGateArray = New-ToiArraySchema -Description 'Array of quality gate results.' -Items $qualityGateResultSchema
     $branchSchema = New-ToiObjectSchema -Description 'Branch-level workflow metadata.' -Required @('current', 'type', 'default', 'published', 'note', 'commit_convention') -Properties @{

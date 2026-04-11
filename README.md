@@ -135,6 +135,7 @@ If you just want a fast repo check:
 - `incoming`: show commits available from upstream without pulling
 - `outgoing`: show commits ready to push upstream
 - `sync -Push`: refresh a stale PR branch by fetching, updating, and pushing when safe
+- `sync -DryRun`: preview fetch/update/push behavior without touching refs or the network
 - `bisect`: guided `git bisect` workflow with TOI state and reporting
 - `report`: workflow report in markdown or JSON
 - `schema`: JSON contract summary for automation consumers
@@ -166,11 +167,13 @@ If you just want a fast repo check:
 .\\toi.ps1 pr gate
 .\\toi.ps1 pr checks
 .\\toi.ps1 review
+.\\toi.ps1 sync -DryRun
 .\\toi.ps1 pr ready -DryRun
 .\\toi.ps1 pr merge -DryRun
 ```
 
 `pr gate` now includes a suggested next action and a TOI command to run, so it can answer "merge", "wait-for-review", "wait-for-checks", or "sync-branch" instead of only listing blockers.
+When a PR branch is stale relative to its base branch, `pr gate` and `review` now steer you toward `toi sync -Push`.
 When the current branch has no PR, the PR-oriented commands now report that as normal informational state instead of throwing raw `gh` errors.
 
 ### Cut A Release

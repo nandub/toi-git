@@ -1973,6 +1973,9 @@
                                                      "clean":  {
                                                                    "type":  "boolean"
                                                                },
+                                                     "dry_run":  {
+                                                                     "type":  "boolean"
+                                                                 },
                                                      "fetch_output":  {
                                                                           "description":  "Array of strings.",
                                                                           "items":  {
@@ -2022,17 +2025,34 @@
                                                                                      },
                                                                            "type":  "array"
                                                                        },
+                                                     "update_reason":  {
+                                                                           "description":  "Explanation when local update would be skipped.",
+                                                                           "type":  "string|null"
+                                                                       },
                                                      "updated":  {
                                                                      "type":  "boolean"
                                                                  },
                                                      "upstream":  {
                                                                       "description":  "Current upstream ref after sync.",
                                                                       "type":  "string|null"
-                                                                  }
+                                                                  },
+                                                     "would_fetch":  {
+                                                                         "description":  "Whether a dry-run would fetch remotes.",
+                                                                         "type":  "boolean|null"
+                                                                     },
+                                                     "would_push":  {
+                                                                        "description":  "Whether a dry-run would push local commits.",
+                                                                        "type":  "boolean|null"
+                                                                    },
+                                                     "would_update":  {
+                                                                          "description":  "Whether a dry-run would update the local branch.",
+                                                                          "type":  "boolean|null"
+                                                                      }
                                                  },
                                   "required":  [
                                                    "branch",
                                                    "push",
+                                                   "dry_run",
                                                    "clean",
                                                    "sync_strategy",
                                                    "tracking_ref",
@@ -2047,7 +2067,11 @@
                                                    "behind",
                                                    "pushed",
                                                    "push_output",
-                                                   "push_reason"
+                                                   "push_reason",
+                                                   "would_fetch",
+                                                   "would_update",
+                                                   "would_push",
+                                                   "update_reason"
                                                ],
                                   "type":  "object"
                               }

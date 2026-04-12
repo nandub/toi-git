@@ -194,7 +194,8 @@ function Invoke-ToiCommand {
         }
 
         $content = Get-Content -LiteralPath $resolvedProfilePath -Raw
-        return ($content -match ([regex]::Escape($beginMarker) + '.*?' + [regex]::Escape($endMarker)))
+        $pattern = [regex]::Escape($beginMarker) + '.*?' + [regex]::Escape($endMarker)
+        return [regex]::IsMatch($content, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
     }
 
     function Test-UserBinInstalled {
@@ -272,7 +273,8 @@ function Invoke-ToiCommand {
         }
 
         $pattern = [regex]::Escape($beginMarker) + '.*?' + [regex]::Escape($endMarker)
-        $updatedContent = if ($existingContent -match $pattern) {
+        $hasManagedBlock = [regex]::IsMatch($existingContent, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        $updatedContent = if ($hasManagedBlock) {
             [regex]::Replace($existingContent, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($match) $snippet }, [System.Text.RegularExpressions.RegexOptions]::Singleline)
         }
         elseif ([string]::IsNullOrWhiteSpace($existingContent)) {

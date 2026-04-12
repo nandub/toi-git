@@ -247,6 +247,38 @@ Usage: toi <command> [args]
         Remove-Item Function:\toi-dup-check -ErrorAction SilentlyContinue
     }
 
+    try {
+        $tempProfilePath = Join-Path ([System.IO.Path]::GetTempPath()) ("toi-profile-self-check-{0}.ps1" -f [System.Guid]::NewGuid().ToString('N'))
+        $installArgs = @('install', 'profile', '-ProfilePath', $tempProfilePath)
+        $updateArgs = @('install', 'update', 'profile', '-ProfilePath', $tempProfilePath)
+
+        $firstInstall = Invoke-CommandCheck -Name 'Install Profile Temp' -CommandArgs $installArgs -TimeoutSeconds 20
+        if (-not $firstInstall.Success) {
+            throw $firstInstall.Detail
+        }
+
+        $secondInstall = Invoke-CommandCheck -Name 'Install Update Profile Temp' -CommandArgs $updateArgs -TimeoutSeconds 20
+        if (-not $secondInstall.Success) {
+            throw $secondInstall.Detail
+        }
+
+        $profileContent = Get-Content -LiteralPath $tempProfilePath -Raw
+        $markerCount = ([regex]::Matches($profileContent, [regex]::Escape('# >>> TOI Git >>>'))).Count
+        if ($markerCount -ne 1) {
+            throw 'Profile install wrote duplicate managed blocks.'
+        }
+
+        Add-CheckResult -Name 'Install Profile Idempotent' -Success $true -Detail 'Repeated profile install preserved a single managed block.'
+    }
+    catch {
+        Add-CheckResult -Name 'Install Profile Idempotent' -Success $false -Detail $_.Exception.Message
+    }
+    finally {
+        if ($tempProfilePath) {
+            Remove-Item -LiteralPath $tempProfilePath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     $publishDryRunResult = Invoke-CommandCheck -Name 'Publish Dry Run JSON' -CommandArgs @('publish', '-DryRun', '-Json') -TimeoutSeconds 15
     if (-not $publishDryRunResult.Success) {
         Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $publishDryRunResult.Detail

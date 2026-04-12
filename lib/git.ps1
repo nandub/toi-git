@@ -446,8 +446,10 @@ function Register-ToiArgumentCompleter {
         [string[]]$CommandNames = @('toi', 'Invoke-Toi')
     )
 
+    $completionMap = Get-ToiCompletionMap
+
     foreach ($commandName in $CommandNames) {
-        Register-ArgumentCompleter -CommandName $commandName -ScriptBlock {
+        $scriptBlock = {
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
             $arguments = @()
@@ -461,10 +463,26 @@ function Register-ToiArgumentCompleter {
                 }
             }
 
-            Get-ToiCompletionCandidates -Arguments $arguments -WordToComplete $wordToComplete | ForEach-Object {
+            $word = if ($wordToComplete) { $wordToComplete } else { '' }
+            if (-not $arguments -or $arguments.Count -eq 0) {
+                $candidates = @($completionMap[''] | Where-Object { $_ -like "$word*" })
+            }
+            else {
+                $commandKey = $arguments[0].ToLowerInvariant()
+                $candidates = if ($completionMap.ContainsKey($commandKey)) {
+                    @($completionMap[$commandKey] | Where-Object { $_ -like "$word*" })
+                }
+                else {
+                    @()
+                }
+            }
+
+            $candidates | ForEach-Object {
                 [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
             }
-        }
+        }.GetNewClosure()
+
+        Register-ArgumentCompleter -CommandName $commandName -ParameterName Arguments -ScriptBlock $scriptBlock
     }
 }
 

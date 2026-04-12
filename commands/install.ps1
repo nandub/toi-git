@@ -70,8 +70,8 @@ function Invoke-ToiCommand {
         return @(
             $beginMarker
             'function toi {'
-            '    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)'
-            "    & '$toiPath' @Args"
+            '    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)'
+            "    & '$toiPath' @Arguments"
             '}'
             "& '$toiPath' completion register *> `$null"
             $endMarker

@@ -199,6 +199,28 @@ Usage: toi <command> [args]
         Add-CheckResult -Name $commandCheck.Name -Success $result.Success -Detail $result.Detail
     }
 
+    try {
+        function toi-self-check {
+            param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+        }
+
+        Register-ToiArgumentCompleter -CommandNames @('toi-self-check')
+        $completionMatches = (TabExpansion2 -inputScript 'toi-self-check s' -cursorColumn 16).CompletionMatches |
+            Select-Object -ExpandProperty CompletionText
+
+        if (-not @($completionMatches) -or -not (@($completionMatches) -contains 'status')) {
+            throw 'Profile-style completion did not return expected command matches.'
+        }
+
+        Add-CheckResult -Name 'Completion Profile Wrapper' -Success $true -Detail 'Profile-style Args wrapper completed top-level commands.'
+    }
+    catch {
+        Add-CheckResult -Name 'Completion Profile Wrapper' -Success $false -Detail $_.Exception.Message
+    }
+    finally {
+        Remove-Item Function:\toi-self-check -ErrorAction SilentlyContinue
+    }
+
     $publishDryRunResult = Invoke-CommandCheck -Name 'Publish Dry Run JSON' -CommandArgs @('publish', '-DryRun', '-Json') -TimeoutSeconds 15
     if (-not $publishDryRunResult.Success) {
         Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $publishDryRunResult.Detail

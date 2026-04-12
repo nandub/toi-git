@@ -449,6 +449,8 @@ function Register-ToiArgumentCompleter {
     $completionMap = Get-ToiCompletionMap
 
     foreach ($commandName in $CommandNames) {
+        $parameterNames = @('Arguments', 'Args') | Select-Object -Unique
+
         $scriptBlock = {
             param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
 
@@ -482,7 +484,9 @@ function Register-ToiArgumentCompleter {
             }
         }.GetNewClosure()
 
-        Register-ArgumentCompleter -CommandName $commandName -ParameterName Arguments -ScriptBlock $scriptBlock
+        foreach ($parameterName in $parameterNames) {
+            Register-ArgumentCompleter -CommandName $commandName -ParameterName $parameterName -ScriptBlock $scriptBlock
+        }
     }
 }
 

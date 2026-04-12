@@ -446,6 +446,10 @@ function Register-ToiArgumentCompleter {
         [string[]]$CommandNames = @('toi', 'Invoke-Toi')
     )
 
+    if (-not $global:ToiArgumentCompleterRegistry -or $global:ToiArgumentCompleterRegistry -isnot [hashtable]) {
+        $global:ToiArgumentCompleterRegistry = @{}
+    }
+
     $completionMap = Get-ToiCompletionMap
 
     foreach ($commandName in $CommandNames) {
@@ -485,14 +489,19 @@ function Register-ToiArgumentCompleter {
         }.GetNewClosure()
 
         foreach ($parameterName in $parameterNames) {
+            $registrationKey = "$commandName::$parameterName"
+            if ($global:ToiArgumentCompleterRegistry.ContainsKey($registrationKey)) {
+                continue
+            }
+
             Register-ArgumentCompleter -CommandName $commandName -ParameterName $parameterName -ScriptBlock $scriptBlock
+            $global:ToiArgumentCompleterRegistry[$registrationKey] = $true
         }
     }
 }
 
 function Test-ToiArgumentCompleterRegistered {
-    $completerCommand = Get-Command Register-ArgumentCompleter -ErrorAction SilentlyContinue
-    return $null -ne $completerCommand
+    return ($global:ToiArgumentCompleterRegistry -is [hashtable] -and $global:ToiArgumentCompleterRegistry.Count -gt 0)
 }
 
 function Get-ToiCompletionRegistrationScript {

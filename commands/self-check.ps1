@@ -221,6 +221,32 @@ Usage: toi <command> [args]
         Remove-Item Function:\toi-self-check -ErrorAction SilentlyContinue
     }
 
+    try {
+        function toi-dup-check {
+            param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+        }
+
+        Register-ToiArgumentCompleter -CommandNames @('toi-dup-check')
+        Register-ToiArgumentCompleter -CommandNames @('toi-dup-check')
+        $completionMatches = @(
+            (TabExpansion2 -inputScript 'toi-dup-check install' -cursorColumn 21).CompletionMatches |
+                Select-Object -ExpandProperty CompletionText
+        )
+        $installMatches = @($completionMatches | Where-Object { $_ -eq 'install' })
+
+        if ($installMatches.Count -ne 1) {
+            throw 'Repeated completion registration produced duplicate matches.'
+        }
+
+        Add-CheckResult -Name 'Completion Idempotent Registration' -Success $true -Detail 'Repeated registration does not duplicate completion matches.'
+    }
+    catch {
+        Add-CheckResult -Name 'Completion Idempotent Registration' -Success $false -Detail $_.Exception.Message
+    }
+    finally {
+        Remove-Item Function:\toi-dup-check -ErrorAction SilentlyContinue
+    }
+
     $publishDryRunResult = Invoke-CommandCheck -Name 'Publish Dry Run JSON' -CommandArgs @('publish', '-DryRun', '-Json') -TimeoutSeconds 15
     if (-not $publishDryRunResult.Success) {
         Add-CheckResult -Name 'Publish Dry Run JSON' -Success $false -Detail $publishDryRunResult.Detail

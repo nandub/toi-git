@@ -44,6 +44,7 @@ $commandMap = @{
     'release'      = Join-Path $root 'commands\release.ps1'
     'hotfix'       = Join-Path $root 'commands\hotfix.ps1'
     'bisect'       = Join-Path $root 'commands\bisect.ps1'
+    'completion'   = Join-Path $root 'commands\completion.ps1'
     'help'         = $null
 }
 
@@ -81,6 +82,7 @@ function Show-Help {
     Write-Host '  release       Start a release branch'
     Write-Host '  hotfix        Start a hotfix branch from the default branch'
     Write-Host '  bisect        Guide a git bisect debugging session'
+    Write-Host '  completion    Register or inspect PowerShell completion'
 }
 
 if (-not $Command) {

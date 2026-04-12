@@ -73,6 +73,7 @@ function Invoke-ToiCommand {
             '    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)'
             "    & '$toiPath' @Args"
             '}'
+            "& '$toiPath' completion register *> `$null"
             $endMarker
         ) -join [Environment]::NewLine
     }

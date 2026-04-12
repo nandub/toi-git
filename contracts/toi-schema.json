@@ -118,6 +118,35 @@
                                                         ],
                                            "type":  "object"
                                        },
+                     "completion":  {
+                                        "description":  "Completion command JSON output.",
+                                        "properties":  {
+                                                           "action":  {
+                                                                          "type":  "string"
+                                                                      },
+                                                           "available":  {
+                                                                             "description":  "Whether completion registration support is available in the current session.",
+                                                                             "type":  "boolean|null"
+                                                                         },
+                                                           "command_names":  {
+                                                                                 "description":  "Commands covered by the completer.",
+                                                                                 "items":  {
+                                                                                               "type":  "string"
+                                                                                           },
+                                                                                 "type":  "array"
+                                                                             },
+                                                           "registered":  {
+                                                                              "description":  "Whether completion registration was performed.",
+                                                                              "type":  "boolean|null"
+                                                                          },
+                                                           "script":  {
+                                                                          "description":  "Profile snippet for manual completion registration.",
+                                                                          "type":  "string|null"
+                                                                      }
+                                                       },
+                                        "required":  "action",
+                                        "type":  "object"
+                                    },
                      "dashboard":  {
                                        "description":  "Dashboard command JSON output.",
                                        "properties":  {

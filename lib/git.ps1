@@ -395,6 +395,91 @@ function Get-ToiConfig {
     }
 }
 
+function Get-ToiCommandNames {
+    return @(
+        'status', 'incoming', 'outgoing', 'summary', 'sync', 'commit', 'branch-clean',
+        'save', 'undo', 'open', 'worktree', 'start', 'doctor', 'ship', 'publish',
+        'pr', 'review', 'dashboard', 'next', 'note', 'self-check', 'report',
+        'schema', 'version', 'install', 'stack', 'release', 'hotfix', 'bisect',
+        'completion', 'help'
+    )
+}
+
+function Get-ToiCompletionMap {
+    return @{
+        '' = Get-ToiCommandNames
+        'sync' = @('-Push', '-DryRun', '-Json')
+        'install' = @('status', 'uninstall', 'update', 'profile', 'user-bin', 'module', '-DryRun', '-TargetDir', '-ProfilePath')
+        'pr' = @('status', 'checks', 'ready', 'merge', 'gate', '-Json', '-DryRun', '-Required', '-Undo', '-DeleteBranch', '-Auto', '-Admin', '-Merge', '-Rebase', '-Squash')
+        'release' = @('start', 'notes', 'tag', 'publish', '-Json', '-DryRun', '-Draft')
+        'stack' = @('new', 'restack', 'parent', 'list')
+        'worktree' = @('list', 'add')
+        'open' = @('repo', 'branch', 'compare', 'pr')
+        'completion' = @('register', 'status', 'script', '-Json')
+        'bisect' = @('start', 'status', 'good', 'bad', 'skip', 'run', 'report', 'log', 'reset', '-Json')
+        'publish' = @('-Json', '-DryRun', '-Pr', '-Open')
+        'schema' = @('-Json', '-Snapshot', '-WriteSnapshot', '-CheckSnapshot', '-BumpVersion')
+        'note' = @('show', 'set', 'clear')
+        'hotfix' = @('start')
+    }
+}
+
+function Get-ToiCompletionCandidates {
+    param(
+        [string[]]$Arguments,
+        [string]$WordToComplete
+    )
+
+    $completionMap = Get-ToiCompletionMap
+    $word = if ($WordToComplete) { $WordToComplete } else { '' }
+    if (-not $Arguments -or $Arguments.Count -eq 0) {
+        return @($completionMap[''] | Where-Object { $_ -like "$word*" })
+    }
+
+    $command = $Arguments[0].ToLowerInvariant()
+    $candidates = if ($completionMap.ContainsKey($command)) { @($completionMap[$command]) } else { @() }
+    return @($candidates | Where-Object { $_ -like "$word*" })
+}
+
+function Register-ToiArgumentCompleter {
+    param(
+        [string[]]$CommandNames = @('toi', 'Invoke-Toi')
+    )
+
+    foreach ($commandName in $CommandNames) {
+        Register-ArgumentCompleter -CommandName $commandName -ScriptBlock {
+            param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+            $arguments = @()
+            if ($commandAst -and $commandAst.CommandElements.Count -gt 1) {
+                $elements = @($commandAst.CommandElements | Select-Object -Skip 1)
+                $count = if ([string]::IsNullOrEmpty($wordToComplete)) { $elements.Count } else { [Math]::Max(0, $elements.Count - 1) }
+                if ($count -gt 0) {
+                    $arguments = @($elements[0..($count - 1)] | ForEach-Object {
+                            $_.Extent.Text.Trim("'`"")
+                        })
+                }
+            }
+
+            Get-ToiCompletionCandidates -Arguments $arguments -WordToComplete $wordToComplete | ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+            }
+        }
+    }
+}
+
+function Test-ToiArgumentCompleterRegistered {
+    $completerCommand = Get-Command Register-ArgumentCompleter -ErrorAction SilentlyContinue
+    return $null -ne $completerCommand
+}
+
+function Get-ToiCompletionRegistrationScript {
+    return @(
+        '# Register TOI completions for the current PowerShell session'
+        'Register-ToiArgumentCompleter'
+    ) -join [Environment]::NewLine
+}
+
 function Get-DefaultBranchName {
     $config = Get-ToiConfig
     return $config.defaultBranch
@@ -2894,6 +2979,13 @@ function Get-ToiJsonCommandSchemas {
                 recommended_command = New-ToiSchemaField -Type 'string' -Description 'Suggested TOI command for the next step.'
                 blockers = $stringArray
                 warnings = $stringArray
+            })
+        completion = (New-ToiObjectSchema -Description 'Completion command JSON output.' -Required @('action') -Properties @{
+                action = $stringField
+                registered = (New-ToiSchemaField -Type 'boolean|null' -Description 'Whether completion registration was performed.')
+                available = (New-ToiSchemaField -Type 'boolean|null' -Description 'Whether completion registration support is available in the current session.')
+                command_names = (New-ToiArraySchema -Description 'Commands covered by the completer.' -Items $stringField)
+                script = (New-ToiSchemaField -Type 'string|null' -Description 'Profile snippet for manual completion registration.')
             })
         self_check = (New-ToiObjectSchema -Description 'Self-check command JSON output.' -Required @('checks', 'summary') -Properties @{
                 checks = (New-ToiArraySchema -Description 'Per-check results.' -Items $selfCheckResultSchema)

@@ -12,7 +12,7 @@ Recommended for PowerShell:
 .\toi.ps1 install profile
 ```
 
-That adds a small `toi` function to your PowerShell profile so you can run:
+That adds a small `toi` function to your PowerShell profile and registers TOI tab completion for future PowerShell sessions, so you can run:
 
 ```powershell
 toi status
@@ -45,6 +45,19 @@ Useful install options:
 - `install update [profile|user-bin|module]`: refresh an existing install in place
 - `install status`: show the current profile, user-bin, and module install state
 - `install uninstall profile|user-bin|module`: remove a specific install mode
+
+For the current shell only:
+
+```powershell
+.\toi.ps1 completion register
+```
+
+To inspect or print the registration snippet:
+
+```powershell
+.\toi.ps1 completion status
+.\toi.ps1 completion script
+```
 
 The module package files live at [TOIGit.psd1](C:\Users\ferna\development\code\powershell\Codex\Toi\TOIGit.psd1) and [TOIGit.psm1](C:\Users\ferna\development\code\powershell\Codex\Toi\TOIGit.psm1). The module exports `Invoke-Toi` and the `toi` alias.
 
@@ -144,6 +157,7 @@ If TOI detects an in-progress rebase, merge, cherry-pick, revert, detached `HEAD
 - `schema`: JSON contract summary for automation consumers
 - `self-check`: lightweight local verification for TOI Git
 - `install`: manage profile, user-bin, and module installation
+- `completion`: register or inspect PowerShell completion
 
 ## Common Flows
 

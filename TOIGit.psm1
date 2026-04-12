@@ -1,6 +1,8 @@
 $script:ToiModuleRoot = Split-Path -Parent $PSCommandPath
 $script:ToiEntryPoint = Join-Path $script:ToiModuleRoot 'toi.ps1'
 
+& $script:ToiEntryPoint completion register *> $null
+
 function Invoke-Toi {
     [CmdletBinding()]
     param(

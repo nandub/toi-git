@@ -36,6 +36,7 @@ function Invoke-ToiCommand {
             'dashboard' = Join-Path $root 'commands\dashboard.ps1'
             'version' = Join-Path $root 'commands\version.ps1'
             'install' = Join-Path $root 'commands\install.ps1'
+            'completion' = Join-Path $root 'commands\completion.ps1'
             'bisect' = Join-Path $root 'commands\bisect.ps1'
             'pr' = Join-Path $root 'commands\pr.ps1'
             'review' = Join-Path $root 'commands\review.ps1'
@@ -185,6 +186,7 @@ Usage: toi <command> [args]
         @{ Name = 'Install Status'; Args = @('install', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Install Update'; Args = @('install', 'update', 'module', '-DryRun'); TimeoutSeconds = 15 },
+        @{ Name = 'Completion Status'; Args = @('completion', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Status'; Args = @('bisect', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Report'; Args = @('bisect', 'report'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Log'; Args = @('bisect', 'log'); TimeoutSeconds = 15 },
@@ -302,6 +304,7 @@ Usage: toi <command> [args]
         @{ Name = 'Outgoing JSON'; Args = @('outgoing', '-Json'); TimeoutSeconds = 15; Required = @('branch', 'direction', 'available', 'count', 'commits'); SchemaKey = 'outgoing' },
         @{ Name = 'Dashboard JSON'; Args = @('dashboard', '-Json'); TimeoutSeconds = 20; Required = @('branch', 'working_tree', 'next_actions'); SchemaKey = 'dashboard' },
         @{ Name = 'Version JSON'; Args = @('version', '-Json'); TimeoutSeconds = 15; Required = @('module_version', 'latest_tag'); SchemaKey = $null },
+        @{ Name = 'Completion JSON'; Args = @('completion', 'status', '-Json'); TimeoutSeconds = 15; Required = @('action', 'available', 'command_names'); SchemaKey = 'completion' },
         @{ Name = 'Bisect Status JSON'; Args = @('bisect', 'status', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'steps'); SchemaKey = 'bisect_status' },
         @{ Name = 'Bisect Report JSON'; Args = @('bisect', 'report', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'recorded_steps', 'recent_log'); SchemaKey = 'bisect_report' },
         @{ Name = 'Bisect Log JSON'; Args = @('bisect', 'log', '-Json'); TimeoutSeconds = 15; Required = @('active', 'branch', 'steps'); SchemaKey = 'bisect_log' },

@@ -556,6 +556,91 @@ function Test-WorkingTreeClean {
     return $status.Count -eq 0
 }
 
+function Test-RebaseInProgress {
+    $gitDir = Get-GitDirectory
+    return (Test-Path -LiteralPath (Join-Path $gitDir 'rebase-merge')) -or
+        (Test-Path -LiteralPath (Join-Path $gitDir 'rebase-apply')) -or
+        (Test-Path -LiteralPath (Join-Path $gitDir 'REBASE_HEAD'))
+}
+
+function Test-MergeInProgress {
+    $gitDir = Get-GitDirectory
+    return (Test-Path -LiteralPath (Join-Path $gitDir 'MERGE_HEAD'))
+}
+
+function Test-CherryPickInProgress {
+    $gitDir = Get-GitDirectory
+    return (Test-Path -LiteralPath (Join-Path $gitDir 'CHERRY_PICK_HEAD'))
+}
+
+function Test-RevertInProgress {
+    $gitDir = Get-GitDirectory
+    return (Test-Path -LiteralPath (Join-Path $gitDir 'REVERT_HEAD'))
+}
+
+function Get-ToiRepositoryState {
+    $branch = Get-CurrentBranchName
+    $state = 'normal'
+    $description = 'Repository is in a normal workflow state.'
+    $recovery = @()
+
+    if (Test-RebaseInProgress) {
+        $state = 'rebase'
+        $description = 'A rebase is currently in progress.'
+        $recovery = @(
+            'Resolve conflicts, then run `git rebase --continue`.',
+            'Abort the rebase with `git rebase --abort` if needed.'
+        )
+    }
+    elseif (Test-MergeInProgress) {
+        $state = 'merge'
+        $description = 'A merge is currently in progress.'
+        $recovery = @(
+            'Resolve conflicts, then commit the merge.',
+            'Abort the merge with `git merge --abort` if needed.'
+        )
+    }
+    elseif (Test-CherryPickInProgress) {
+        $state = 'cherry-pick'
+        $description = 'A cherry-pick is currently in progress.'
+        $recovery = @(
+            'Resolve conflicts, then run `git cherry-pick --continue`.',
+            'Abort the cherry-pick with `git cherry-pick --abort` if needed.'
+        )
+    }
+    elseif (Test-RevertInProgress) {
+        $state = 'revert'
+        $description = 'A revert is currently in progress.'
+        $recovery = @(
+            'Resolve conflicts, then run `git revert --continue`.',
+            'Abort the revert with `git revert --abort` if needed.'
+        )
+    }
+    elseif (Test-ToiBisectActive) {
+        $state = 'bisect'
+        $description = 'A bisect session is currently active.'
+        $recovery = @(
+            'Inspect progress with `toi bisect status`.',
+            'Exit the bisect with `toi bisect reset` when finished.'
+        )
+    }
+    elseif (-not $branch) {
+        $state = 'detached-head'
+        $description = 'HEAD is detached.'
+        $recovery = @(
+            'Create a branch with `git switch -c <name>` if you want to keep this state.',
+            'Return to a branch with `git switch main` or another branch.'
+        )
+    }
+
+    return [PSCustomObject]@{
+        state = $state
+        description = $description
+        recovery = @($recovery)
+        blocking = ($state -ne 'normal')
+    }
+}
+
 function Get-StatusSummary {
     $statusLines = Get-StatusLines | Select-Object -Skip 1
     $summary = [PSCustomObject]@{
@@ -1960,6 +2045,7 @@ function Get-ToiWorkflowSnapshot {
     $commitConvention = Get-CommitConvention
     $branchType = Get-CurrentBranchType
     $contractStatus = Get-ToiContractStatus
+    $repositoryState = Get-ToiRepositoryState
     $pullRequestGate = $null
 
     $upstreamTracking = $null
@@ -2000,6 +2086,7 @@ function Get-ToiWorkflowSnapshot {
         DefaultTracking   = $defaultTracking
         RequireBranchNote = (Test-BranchNoteRequired)
         ContractStatus    = $contractStatus
+        RepositoryState   = $repositoryState
         PullRequestGate   = $pullRequestGate
     }
 }
@@ -2014,6 +2101,11 @@ function Get-ToiNextActions {
 
     if ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0) {
         $nextActions.Add('Clean up or checkpoint the working tree with `toi save`.')
+    }
+
+    if ($Snapshot.RepositoryState -and $Snapshot.RepositoryState.blocking) {
+        $nextActions.AddRange(@($Snapshot.RepositoryState.recovery))
+        return @($nextActions | Select-Object -Unique)
     }
 
     if ($Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Published) {
@@ -2102,6 +2194,12 @@ function Convert-ToiSnapshotToJsonModel {
             reason = $Snapshot.ContractStatus.Reason
             path = $Snapshot.ContractStatus.SnapshotPath
         }
+        repository_state = [PSCustomObject]@{
+            state = $Snapshot.RepositoryState.state
+            description = $Snapshot.RepositoryState.description
+            recovery = @($Snapshot.RepositoryState.recovery)
+            blocking = $Snapshot.RepositoryState.blocking
+        }
     }
 }
 
@@ -2115,6 +2213,15 @@ function Get-ToiDoctorRecommendations {
 
     if ($Snapshot.ProtectedBranches -contains $Snapshot.Branch -and ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0)) {
         $recommendations.Add("Avoid doing feature work directly on '$($Snapshot.Branch)'. Create a branch with `toi start feature <name>`.")
+    }
+
+    if ($Snapshot.RepositoryState -and $Snapshot.RepositoryState.blocking) {
+        $recommendations.Add($Snapshot.RepositoryState.description)
+        foreach ($recoveryStep in $Snapshot.RepositoryState.recovery) {
+            $recommendations.Add($recoveryStep)
+        }
+
+        return @($recommendations | Select-Object -Unique)
     }
 
     if ($Snapshot.RequireBranchNote -and $Snapshot.Branch -ne $Snapshot.DefaultBranch -and -not $Snapshot.Note) {
@@ -2157,6 +2264,13 @@ function Get-ToiShipAssessment {
 
     if ($Snapshot.ProtectedBranches -contains $Snapshot.Branch) {
         $blockingIssues.Add("Refusing to ship directly from protected branch '$($Snapshot.Branch)'.")
+    }
+
+    if ($Snapshot.RepositoryState -and $Snapshot.RepositoryState.blocking) {
+        $blockingIssues.Add($Snapshot.RepositoryState.description)
+        foreach ($recoveryStep in $Snapshot.RepositoryState.recovery) {
+            $notes.Add($recoveryStep)
+        }
     }
 
     if ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0) {
@@ -2481,7 +2595,13 @@ function Get-ToiJsonCommandSchemas {
         success = (New-ToiSchemaField -Type 'boolean' -Description 'Whether the validation command succeeded.')
         exit_code = (New-ToiSchemaField -Type 'number' -Description 'Validation command exit code.')
     }
-    $syncSchema = New-ToiObjectSchema -Description 'Sync command JSON output.' -Required @('branch', 'push', 'dry_run', 'clean', 'sync_strategy', 'tracking_ref', 'upstream', 'fetched', 'fetch_output', 'fetch_reason', 'updated', 'update_mode', 'update_output', 'ahead', 'behind', 'pushed', 'push_output', 'push_reason', 'would_fetch', 'would_update', 'would_push', 'update_reason') -Properties @{
+    $repositoryStateSchema = New-ToiObjectSchema -Description 'Detected repository operation state.' -Required @('state', 'description', 'recovery', 'blocking') -Properties @{
+        state = $stringField
+        description = $stringField
+        recovery = $stringArray
+        blocking = $booleanField
+    }
+    $syncSchema = New-ToiObjectSchema -Description 'Sync command JSON output.' -Required @('branch', 'push', 'dry_run', 'clean', 'sync_strategy', 'tracking_ref', 'upstream', 'fetched', 'fetch_output', 'fetch_reason', 'updated', 'update_mode', 'update_output', 'ahead', 'behind', 'pushed', 'push_output', 'push_reason', 'would_fetch', 'would_update', 'would_push', 'update_reason', 'repository_state') -Properties @{
         branch = $stringField
         push = $booleanField
         dry_run = $booleanField
@@ -2504,6 +2624,7 @@ function Get-ToiJsonCommandSchemas {
         would_update = (New-ToiSchemaField -Type 'boolean|null' -Description 'Whether a dry-run would update the local branch.')
         would_push = (New-ToiSchemaField -Type 'boolean|null' -Description 'Whether a dry-run would push local commits.')
         update_reason = (New-ToiSchemaField -Type 'string|null' -Description 'Explanation when local update would be skipped.')
+        repository_state = $repositoryStateSchema
     }
     $qualityGateArray = New-ToiArraySchema -Description 'Array of quality gate results.' -Items $qualityGateResultSchema
     $branchSchema = New-ToiObjectSchema -Description 'Branch-level workflow metadata.' -Required @('current', 'type', 'default', 'published', 'note', 'commit_convention') -Properties @{
@@ -2596,7 +2717,7 @@ function Get-ToiJsonCommandSchemas {
         passed = $numberField
         failed = $numberField
     }
-    $snapshotSchema = New-ToiObjectSchema -Description 'Workflow snapshot model.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract') -Properties @{
+    $snapshotSchema = New-ToiObjectSchema -Description 'Workflow snapshot model.' -Required @('branch', 'working_tree', 'publish', 'stack', 'quality_gates', 'policy', 'contract', 'repository_state') -Properties @{
         branch = $branchSchema
         working_tree = $workingTreeSchema
         publish = $publishSchema
@@ -2604,6 +2725,7 @@ function Get-ToiJsonCommandSchemas {
         quality_gates = $qualityGatesSchema
         policy = $policySchema
         contract = $contractSchema
+        repository_state = $repositoryStateSchema
     }
     $prCheckSchema = New-ToiObjectSchema -Description 'Single pull request check result.' -Required @('bucket', 'name', 'state', 'workflow') -Properties @{
         bucket = New-ToiSchemaField -Type 'string' -Description 'Check status bucket.'

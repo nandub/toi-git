@@ -7,6 +7,7 @@ function Invoke-ToiCommand {
     $push = $Arguments -contains '-Push'
     $dryRun = $Arguments -contains '-DryRun'
     $branch = Get-CurrentBranchName
+    $repositoryState = Get-ToiRepositoryState
     $upstreamRef = Get-UpstreamRef
     $syncStrategy = Get-SyncStrategy
     $defaultBranch = Get-DefaultBranchName
@@ -25,6 +26,54 @@ function Invoke-ToiCommand {
         }
 
         throw "Refusing to push from protected branch '$branch'."
+    }
+
+    if ($repositoryState.blocking) {
+        $blockedResult = [PSCustomObject]@{
+            branch = $branch
+            push = $push
+            dry_run = $dryRun
+            clean = Test-WorkingTreeClean
+            sync_strategy = Get-SyncStrategy
+            tracking_ref = $upstreamRef
+            upstream = $upstreamRef
+            fetched = $false
+            fetch_output = @()
+            fetch_reason = $repositoryState.description
+            updated = $false
+            update_mode = $null
+            update_output = @()
+            ahead = $null
+            behind = $null
+            pushed = $false
+            push_output = @()
+            push_reason = 'Sync is blocked until the current repository operation is resolved.'
+            would_fetch = $null
+            would_update = $null
+            would_push = $null
+            update_reason = $repositoryState.description
+            repository_state = [PSCustomObject]@{
+                state = $repositoryState.state
+                description = $repositoryState.description
+                recovery = @($repositoryState.recovery)
+                blocking = $repositoryState.blocking
+            }
+        }
+
+        if ($json) {
+            Write-Json $blockedResult
+            return
+        }
+
+        Write-Section 'Sync'
+        Write-KeyValue 'Branch' $branch
+        Write-KeyValue 'Push' $push
+        Write-KeyValue 'Dry Run' $dryRun
+        Write-KeyValue 'Sync Strategy' $syncStrategy
+        Write-Section 'Blocked'
+        Write-WarningLine $repositoryState.description
+        $repositoryState.recovery | ForEach-Object { Write-Host "- $_" }
+        return
     }
 
     $fetchResult = Invoke-GitWithTimeout -GitArguments @('fetch', '--all', '--prune') -TimeoutSeconds 20 -DisablePrompt -AllowFailure
@@ -126,6 +175,12 @@ function Invoke-ToiCommand {
             would_update = $wouldUpdate
             would_push = $wouldPush
             update_reason = $plannedUpdateReason
+            repository_state = [PSCustomObject]@{
+                state = $repositoryState.state
+                description = $repositoryState.description
+                recovery = @($repositoryState.recovery)
+                blocking = $repositoryState.blocking
+            }
         }
 
         if ($json) {
@@ -262,6 +317,12 @@ function Invoke-ToiCommand {
         would_update = $null
         would_push = $null
         update_reason = $null
+        repository_state = [PSCustomObject]@{
+            state = $repositoryState.state
+            description = $repositoryState.description
+            recovery = @($repositoryState.recovery)
+            blocking = $repositoryState.blocking
+        }
     }
 
     if ($json) {

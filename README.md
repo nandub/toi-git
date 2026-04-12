@@ -42,6 +42,7 @@ Useful install options:
 - `install user-bin -TargetDir <path>`: install wrappers to a specific directory
 - `install module -DryRun`: preview the module bundle install
 - `install module -TargetDir <path>`: install the module bundle to a specific module root
+- `install update [profile|user-bin|module]`: refresh an existing install in place
 - `install status`: show the current profile, user-bin, and module install state
 - `install uninstall profile|user-bin|module`: remove a specific install mode
 
@@ -96,6 +97,8 @@ If you just want a fast repo check:
 .\\toi.ps1 report
 .\\toi.ps1 self-check
 ```
+
+If TOI detects an in-progress rebase, merge, cherry-pick, revert, detached `HEAD`, or active bisect session, `doctor`, `ship`, `next`, and `sync` now surface recovery guidance instead of treating the repo as a normal clean state.
 
 ## Command Groups
 

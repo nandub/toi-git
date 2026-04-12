@@ -1425,6 +1425,34 @@
                                                                                                                               ],
                                                                                                                  "type":  "object"
                                                                                                              },
+                                                                                           "repository_state":  {
+                                                                                                                    "description":  "Detected repository operation state.",
+                                                                                                                    "properties":  {
+                                                                                                                                       "blocking":  {
+                                                                                                                                                        "type":  "boolean"
+                                                                                                                                                    },
+                                                                                                                                       "description":  {
+                                                                                                                                                           "type":  "string"
+                                                                                                                                                       },
+                                                                                                                                       "recovery":  {
+                                                                                                                                                        "description":  "Array of strings.",
+                                                                                                                                                        "items":  {
+                                                                                                                                                                      "type":  "string"
+                                                                                                                                                                  },
+                                                                                                                                                        "type":  "array"
+                                                                                                                                                    },
+                                                                                                                                       "state":  {
+                                                                                                                                                     "type":  "string"
+                                                                                                                                                 }
+                                                                                                                                   },
+                                                                                                                    "required":  [
+                                                                                                                                     "state",
+                                                                                                                                     "description",
+                                                                                                                                     "recovery",
+                                                                                                                                     "blocking"
+                                                                                                                                 ],
+                                                                                                                    "type":  "object"
+                                                                                                                },
                                                                                            "stack":  {
                                                                                                          "description":  "Stack-parent and default-branch comparison state.",
                                                                                                          "properties":  {
@@ -1479,7 +1507,8 @@
                                                                                          "stack",
                                                                                          "quality_gates",
                                                                                          "policy",
-                                                                                         "contract"
+                                                                                         "contract",
+                                                                                         "repository_state"
                                                                                      ],
                                                                         "type":  "object"
                                                                     }
@@ -2007,6 +2036,34 @@
                                                      "pushed":  {
                                                                     "type":  "boolean"
                                                                 },
+                                                     "repository_state":  {
+                                                                              "description":  "Detected repository operation state.",
+                                                                              "properties":  {
+                                                                                                 "blocking":  {
+                                                                                                                  "type":  "boolean"
+                                                                                                              },
+                                                                                                 "description":  {
+                                                                                                                     "type":  "string"
+                                                                                                                 },
+                                                                                                 "recovery":  {
+                                                                                                                  "description":  "Array of strings.",
+                                                                                                                  "items":  {
+                                                                                                                                "type":  "string"
+                                                                                                                            },
+                                                                                                                  "type":  "array"
+                                                                                                              },
+                                                                                                 "state":  {
+                                                                                                               "type":  "string"
+                                                                                                           }
+                                                                                             },
+                                                                              "required":  [
+                                                                                               "state",
+                                                                                               "description",
+                                                                                               "recovery",
+                                                                                               "blocking"
+                                                                                           ],
+                                                                              "type":  "object"
+                                                                          },
                                                      "sync_strategy":  {
                                                                            "type":  "string"
                                                                        },
@@ -2071,7 +2128,8 @@
                                                    "would_fetch",
                                                    "would_update",
                                                    "would_push",
-                                                   "update_reason"
+                                                   "update_reason",
+                                                   "repository_state"
                                                ],
                                   "type":  "object"
                               }

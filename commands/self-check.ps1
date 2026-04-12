@@ -184,6 +184,7 @@ Usage: toi <command> [args]
         @{ Name = 'Install';   Args = @('install', 'profile', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Install Status'; Args = @('install', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Install Module'; Args = @('install', 'module', '-DryRun'); TimeoutSeconds = 15 },
+        @{ Name = 'Install Update'; Args = @('install', 'update', 'module', '-DryRun'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Status'; Args = @('bisect', 'status'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Report'; Args = @('bisect', 'report'); TimeoutSeconds = 15 },
         @{ Name = 'Bisect Log'; Args = @('bisect', 'log'); TimeoutSeconds = 15 },

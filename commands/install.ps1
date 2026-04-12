@@ -5,6 +5,7 @@ function Invoke-ToiCommand {
 
     $action = 'install'
     $mode = 'profile'
+    $modeSpecified = $false
     $dryRun = $false
     $targetDir = $null
     $profilePath = $null
@@ -21,8 +22,13 @@ function Invoke-ToiCommand {
                 $action = 'uninstall'
                 continue
             }
+            '^(update)$' {
+                $action = 'update'
+                continue
+            }
             '^(profile|user-bin|module)$' {
                 $mode = $argument.ToLowerInvariant()
+                $modeSpecified = $true
                 continue
             }
             '^-DryRun$' {
@@ -451,6 +457,17 @@ function Invoke-ToiCommand {
         Write-KeyValue 'Module Version' $moduleVersion
     }
 
+    function Invoke-InstallMode {
+        param([string]$RequestedMode)
+
+        switch ($RequestedMode) {
+            'profile' { Set-ProfileInstall; return }
+            'user-bin' { Set-UserBinInstall; return }
+            'module' { Set-ModuleInstall; return }
+            default { throw "Unsupported install mode '$RequestedMode'." }
+        }
+    }
+
     if ($action -eq 'status') {
         Show-InstallStatus
         return
@@ -465,10 +482,40 @@ function Invoke-ToiCommand {
         }
     }
 
-    switch ($mode) {
-        'profile' { Set-ProfileInstall }
-        'user-bin' { Set-UserBinInstall }
-        'module' { Set-ModuleInstall }
-        default { throw "Unsupported install mode '$mode'." }
+    if ($action -eq 'update') {
+        if ($modeSpecified) {
+            Invoke-InstallMode -RequestedMode $mode
+            return
+        }
+
+        $updatedModes = New-Object System.Collections.Generic.List[string]
+        if (Test-ProfileInstalled) {
+            Invoke-InstallMode -RequestedMode 'profile'
+            $updatedModes.Add('profile')
+        }
+        if (Test-UserBinInstalled) {
+            Invoke-InstallMode -RequestedMode 'user-bin'
+            $updatedModes.Add('user-bin')
+        }
+        if (Test-ModuleInstalled) {
+            Invoke-InstallMode -RequestedMode 'module'
+            $updatedModes.Add('module')
+        }
+
+        if ($updatedModes.Count -eq 0) {
+            Write-Section 'Install'
+            Write-WarningLine 'No existing TOI install was detected to update.'
+            Write-InfoLine 'Use `toi install profile`, `toi install user-bin`, or `toi install module` first.'
+            return
+        }
+
+        if ($updatedModes.Count -gt 1) {
+            Write-Section 'Install'
+            Write-SuccessLine ('Updated install modes: ' + ($updatedModes -join ', '))
+        }
+
+        return
     }
+
+    Invoke-InstallMode -RequestedMode $mode
 }

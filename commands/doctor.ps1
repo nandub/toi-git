@@ -21,6 +21,9 @@ function Invoke-ToiCommand {
     Write-Host "Working tree: $($snapshot.Status.ChangedFiles) changed file(s)"
     Write-Host "Published: $($snapshot.Published)"
     Write-Host "Commit convention: $($snapshot.CommitConvention)"
+    if ($snapshot.RepositoryState) {
+        Write-Host "Repository state: $($snapshot.RepositoryState.state)"
+    }
     if ($snapshot.Note) {
         Write-Host "Note: $($snapshot.Note)"
     }
@@ -57,6 +60,12 @@ function Invoke-ToiCommand {
 
     if ($snapshot.DefaultTracking -and $snapshot.DefaultTracking.RightAhead -gt 0) {
         Write-WarningLine "Branch is behind $($snapshot.DefaultBranch) by $($snapshot.DefaultTracking.RightAhead) commit(s)."
+    }
+
+    if ($snapshot.RepositoryState -and $snapshot.RepositoryState.blocking) {
+        Write-Section 'Recovery'
+        Write-WarningLine $snapshot.RepositoryState.description
+        $snapshot.RepositoryState.recovery | ForEach-Object { Write-Host "- $_" }
     }
 
     Write-Section 'Next Actions'

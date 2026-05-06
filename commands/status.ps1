@@ -4,9 +4,9 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     $json = $Arguments -contains '-Json'
-    $statusLines = Get-StatusLines
+    $statusLines = @(Get-StatusLines)
     $branchLine = $statusLines | Select-Object -First 1
-    $fileLines = $statusLines | Select-Object -Skip 1
+    $fileLines = @($statusLines | Select-Object -Skip 1)
     $snapshot = Get-ToiWorkflowSnapshot
 
     $staged = @()

@@ -243,7 +243,7 @@ function Assert-InGitRepository {
 function Get-CurrentBranchName {
     $result = Invoke-Git -GitArguments @('branch', '--show-current')
     $branch = $result.Output | Select-Object -First 1
-    if ($null -eq $branch) {
+    if ([string]::IsNullOrWhiteSpace($branch)) {
         return $null
     }
 
@@ -664,11 +664,15 @@ function Test-CurrentBranchPublished {
         return $true
     }
 
+    if (-not $branch) {
+        return $false
+    }
+
     return (Test-RemoteBranchExists -BranchName $branch)
 }
 
 function Test-WorkingTreeClean {
-    $status = Get-StatusLines | Select-Object -Skip 1
+    $status = @(Get-StatusLines | Select-Object -Skip 1)
     return $status.Count -eq 0
 }
 
@@ -758,7 +762,7 @@ function Get-ToiRepositoryState {
 }
 
 function Get-StatusSummary {
-    $statusLines = Get-StatusLines | Select-Object -Skip 1
+    $statusLines = @(Get-StatusLines | Select-Object -Skip 1)
     $summary = [PSCustomObject]@{
         ChangedFiles = $statusLines.Count
         Staged       = 0
@@ -928,7 +932,7 @@ function Get-ToiIncomingCompareRef {
     $defaultBranch = Get-DefaultBranchName
     $remoteDefaultRef = Get-RemoteDefaultBranchRef
 
-    if ($branch -eq $defaultBranch -and $remoteDefaultRef) {
+    if ($branch -and $branch -eq $defaultBranch -and $remoteDefaultRef) {
         return $remoteDefaultRef
     }
 
@@ -942,6 +946,10 @@ function Get-ToiOutgoingCompareRef {
     }
 
     $branch = Get-CurrentBranchName
+    if (-not $branch) {
+        return $null
+    }
+
     if (Test-RemoteBranchExists -BranchName $branch) {
         return (Get-BranchRemoteRef -BranchName $branch)
     }
@@ -2150,12 +2158,13 @@ function New-ReleaseNotesContent {
 
 function Get-ToiWorkflowSnapshot {
     $branch = Get-CurrentBranchName
+    $branchLabel = if ($branch) { $branch } else { '(detached HEAD)' }
     $defaultBranch = Get-DefaultBranchName
     $upstreamRef = Get-UpstreamRef
     $published = Test-CurrentBranchPublished
     $status = Get-StatusSummary
-    $note = Get-ToiBranchNote -BranchName $branch
-    $parent = Get-ToiStackParent -BranchName $branch
+    $note = if ($branch) { Get-ToiBranchNote -BranchName $branch } else { $null }
+    $parent = if ($branch) { Get-ToiStackParent -BranchName $branch } else { $null }
     $validationSuite = Invoke-ToiValidationSuite
     $protectedBranches = Get-ProtectedBranches
     $commitConvention = Get-CommitConvention
@@ -2170,14 +2179,14 @@ function Get-ToiWorkflowSnapshot {
     }
 
     $defaultTracking = $null
-    if ($branch -ne $defaultBranch) {
+    if ($branch -and $branch -ne $defaultBranch) {
         $defaultCompareRef = Get-DefaultBranchComparisonRef
         if ($defaultCompareRef) {
             $defaultTracking = Get-AheadBehind -LeftRef $defaultCompareRef -RightRef 'HEAD'
         }
     }
 
-    if ($branch -ne $defaultBranch -and $published -and (Test-GitHubCliAuthenticated)) {
+    if ($branch -and $branch -ne $defaultBranch -and $published -and (Test-GitHubCliAuthenticated)) {
         try {
             $pullRequestGate = Get-ToiPullRequestGateStatus
         }
@@ -2187,7 +2196,7 @@ function Get-ToiWorkflowSnapshot {
     }
 
     return [PSCustomObject]@{
-        Branch            = $branch
+        Branch            = $branchLabel
         BranchType        = $branchType
         DefaultBranch     = $defaultBranch
         UpstreamRef       = $upstreamRef

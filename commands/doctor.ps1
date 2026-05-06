@@ -5,7 +5,7 @@ function Invoke-ToiCommand {
 
     $json = $Arguments -contains '-Json'
     $snapshot = Get-ToiWorkflowSnapshot
-    $recommendations = Get-ToiDoctorRecommendations -Snapshot $snapshot
+    $recommendations = @(Get-ToiDoctorRecommendations -Snapshot $snapshot)
 
     if ($json) {
         $model = Convert-ToiSnapshotToJsonModel -Snapshot $snapshot

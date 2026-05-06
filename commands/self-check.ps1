@@ -199,19 +199,27 @@ Usage: toi <command> [args]
         Add-CheckResult -Name $commandCheck.Name -Success $result.Success -Detail $result.Detail
     }
 
-    try {
-        $strictStatusOutput = (& {
+    foreach ($strictCommand in @(
+            @{ Name = 'Status Strict Mode'; Path = 'commands\status.ps1' },
+            @{ Name = 'Dashboard Strict Mode'; Path = 'commands\dashboard.ps1' },
+            @{ Name = 'Doctor Strict Mode'; Path = 'commands\doctor.ps1' },
+            @{ Name = 'Ship Strict Mode'; Path = 'commands\ship.ps1' }
+        )) {
+        try {
+            $strictOutput = (& {
                 Set-StrictMode -Version Latest
                 . (Join-Path $root 'lib\output.ps1')
                 . (Join-Path $root 'lib\git.ps1')
-                . (Join-Path $root 'commands\status.ps1')
+                . (Join-Path $root $strictCommand.Path)
                 Invoke-ToiCommand -Arguments @()
             } 6>&1 | Out-String)
-        $strictFirstLine = (($strictStatusOutput -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
-        Add-CheckResult -Name 'Status Strict Mode' -Success $true -Detail $strictFirstLine
-    }
-    catch {
-        Add-CheckResult -Name 'Status Strict Mode' -Success $false -Detail $_.Exception.Message
+
+            $strictFirstLine = (($strictOutput -split "(`r`n|`n|`r)") | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+            Add-CheckResult -Name $strictCommand.Name -Success $true -Detail $strictFirstLine
+        }
+        catch {
+            Add-CheckResult -Name $strictCommand.Name -Success $false -Detail $_.Exception.Message
+        }
     }
 
     try {

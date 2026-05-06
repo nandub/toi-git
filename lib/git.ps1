@@ -2229,7 +2229,9 @@ function Get-ToiNextActions {
     }
 
     if ($Snapshot.RepositoryState -and $Snapshot.RepositoryState.blocking) {
-        $nextActions.AddRange(@($Snapshot.RepositoryState.recovery))
+        foreach ($recoveryStep in @($Snapshot.RepositoryState.recovery)) {
+            $nextActions.Add([string]$recoveryStep)
+        }
         return @($nextActions | Select-Object -Unique)
     }
 
@@ -2337,7 +2339,7 @@ function Get-ToiDoctorRecommendations {
     $recommendations = New-Object System.Collections.Generic.List[string]
 
     if ($Snapshot.ProtectedBranches -contains $Snapshot.Branch -and ($Snapshot.Status.Unstaged -gt 0 -or $Snapshot.Status.Untracked -gt 0)) {
-        $recommendations.Add("Avoid doing feature work directly on '$($Snapshot.Branch)'. Create a branch with `toi start feature <name>`.")
+        $recommendations.Add("Avoid doing feature work directly on '$($Snapshot.Branch)'. Create a branch with ``toi start feature <name>``.")
     }
 
     if ($Snapshot.RepositoryState -and $Snapshot.RepositoryState.blocking) {

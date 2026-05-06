@@ -4,9 +4,9 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     $json = $Arguments -contains '-Json'
-    $sections = Get-DashboardSections
+    $sections = @(Get-DashboardSections)
     $snapshot = Get-ToiWorkflowSnapshot
-    $nextActions = Get-ToiNextActions -Snapshot $snapshot
+    $nextActions = @(Get-ToiNextActions -Snapshot $snapshot)
 
     if ($json) {
         $model = Convert-ToiSnapshotToJsonModel -Snapshot $snapshot
@@ -72,7 +72,7 @@ function Invoke-ToiCommand {
         Write-KeyValue 'Review' $snapshot.PullRequestGate.review_decision
         Write-KeyValue 'Merge State' $snapshot.PullRequestGate.merge_state
         Write-KeyValue 'Approvals' $snapshot.PullRequestGate.reviews.approved
-        Write-KeyValue 'Requests' $snapshot.PullRequestGate.requested_reviewers.Count
+        Write-KeyValue 'Requests' @($snapshot.PullRequestGate.requested_reviewers).Count
         Write-KeyValue 'Next' $snapshot.PullRequestGate.recommended_action
         Write-KeyValue 'Command' $snapshot.PullRequestGate.recommended_command
     }

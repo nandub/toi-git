@@ -19,7 +19,7 @@ function Invoke-ToiCommand {
             blocking_issues = @($assessment.blocking_issues)
             notes = @($assessment.notes)
             commit_range = @($commitRange)
-            shippable = ($assessment.blocking_issues.Count -eq 0)
+            shippable = (@($assessment.blocking_issues).Count -eq 0)
         }) -Force
         Write-Json $model
         return
@@ -32,7 +32,7 @@ function Invoke-ToiCommand {
 
     if ($snapshot.Branch -ne $snapshot.DefaultBranch) {
         Write-Section 'Commits Since Base'
-        if ($commitRange.Count -eq 0) {
+        if (@($commitRange).Count -eq 0) {
             Write-InfoLine 'No commits ahead of the default branch.'
         }
         else {
@@ -70,14 +70,14 @@ function Invoke-ToiCommand {
     }
 
     Write-Section 'Assessment'
-    if ($assessment.blocking_issues.Count -gt 0) {
+    if (@($assessment.blocking_issues).Count -gt 0) {
         $assessment.blocking_issues | ForEach-Object { Write-ErrorLine $_ }
     }
     else {
         Write-SuccessLine 'Branch looks shippable.'
     }
 
-    if ($assessment.notes.Count -gt 0) {
+    if (@($assessment.notes).Count -gt 0) {
         $assessment.notes | ForEach-Object { Write-Host "- $_" }
     }
 }

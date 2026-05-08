@@ -3,11 +3,21 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
+    $argumentList = @()
+    if ($null -ne $Arguments) {
+        $argumentList = @($Arguments)
+    }
     $branch = Get-CurrentBranchName
-    $action = if ($Arguments.Count -gt 0) { $Arguments[0].ToLowerInvariant() } else { 'show' }
+    $action = if ($argumentList.Count -gt 0) { $argumentList[0].ToLowerInvariant() } else { 'show' }
 
     switch ($action) {
         'show' {
+            if (-not $branch) {
+                Write-Section 'Branch Note'
+                Write-InfoLine 'No branch note is available while HEAD is detached.'
+                return
+            }
+
             $note = Get-ToiBranchNote -BranchName $branch
             Write-Section 'Branch Note'
             if ($note) {
@@ -18,11 +28,15 @@ function Invoke-ToiCommand {
             }
         }
         'set' {
-            if ($Arguments.Count -lt 2) {
+            if (-not $branch) {
+                throw 'Branch notes require a named branch. Create or switch to a branch first.'
+            }
+
+            if ($argumentList.Count -lt 2) {
                 throw 'Usage: .\\toi.ps1 note set <text>'
             }
 
-            $note = (($Arguments | Select-Object -Skip 1) -join ' ').Trim()
+            $note = (($argumentList | Select-Object -Skip 1) -join ' ').Trim()
             if (-not $note) {
                 throw 'Branch note cannot be empty.'
             }
@@ -33,6 +47,10 @@ function Invoke-ToiCommand {
             Write-InfoLine $note
         }
         'clear' {
+            if (-not $branch) {
+                throw 'Branch notes require a named branch. Create or switch to a branch first.'
+            }
+
             Remove-ToiBranchNote -BranchName $branch
             Write-Section 'Branch Note'
             Write-InfoLine "Cleared note for $branch"

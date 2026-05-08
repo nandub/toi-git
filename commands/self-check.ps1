@@ -30,6 +30,7 @@ function Invoke-ToiCommand {
 
         $commandMap = @{
             'status' = Join-Path $root 'commands\status.ps1'
+            'summary' = Join-Path $root 'commands\summary.ps1'
             'sync' = Join-Path $root 'commands\sync.ps1'
             'incoming' = Join-Path $root 'commands\incoming.ps1'
             'outgoing' = Join-Path $root 'commands\outgoing.ps1'
@@ -44,6 +45,7 @@ function Invoke-ToiCommand {
             'release' = Join-Path $root 'commands\release.ps1'
             'report' = Join-Path $root 'commands\report.ps1'
             'schema' = Join-Path $root 'commands\schema.ps1'
+            'note' = Join-Path $root 'commands\note.ps1'
         }
 
         if ($CommandArgs.Count -eq 0) {
@@ -176,6 +178,8 @@ Usage: toi <command> [args]
     $commandChecks = @(
         @{ Name = 'Help';      Args = @();            TimeoutSeconds = 10 },
         @{ Name = 'Status';    Args = @('status');    TimeoutSeconds = 15 },
+        @{ Name = 'Summary';   Args = @('summary');   TimeoutSeconds = 15 },
+        @{ Name = 'Note';      Args = @('note');      TimeoutSeconds = 15 },
         @{ Name = 'Sync';      Args = @('sync');      TimeoutSeconds = 45 },
         @{ Name = 'Sync Dry Run'; Args = @('sync', '-DryRun'); TimeoutSeconds = 20 },
         @{ Name = 'Incoming';  Args = @('incoming');  TimeoutSeconds = 15 },
@@ -203,7 +207,10 @@ Usage: toi <command> [args]
             @{ Name = 'Status Strict Mode'; Path = 'commands\status.ps1' },
             @{ Name = 'Dashboard Strict Mode'; Path = 'commands\dashboard.ps1' },
             @{ Name = 'Doctor Strict Mode'; Path = 'commands\doctor.ps1' },
-            @{ Name = 'Ship Strict Mode'; Path = 'commands\ship.ps1' }
+            @{ Name = 'Ship Strict Mode'; Path = 'commands\ship.ps1' },
+            @{ Name = 'Summary Strict Mode'; Path = 'commands\summary.ps1' },
+            @{ Name = 'Note Strict Mode'; Path = 'commands\note.ps1' },
+            @{ Name = 'Schema Strict Mode'; Path = 'commands\schema.ps1' }
         )) {
         try {
             $strictOutput = (& {
@@ -220,6 +227,21 @@ Usage: toi <command> [args]
         catch {
             Add-CheckResult -Name $strictCommand.Name -Success $false -Detail $_.Exception.Message
         }
+    }
+
+    try {
+        $toiPath = Join-Path $root 'toi.ps1'
+        $escapedToiPath = $toiPath -replace "'", "''"
+        $strictScript = "Set-StrictMode -Version Latest; & '$escapedToiPath' summary; & '$escapedToiPath' note; & '$escapedToiPath' schema | Select-Object -First 1"
+        $strictEntrypointOutput = & powershell -NoProfile -ExecutionPolicy Bypass -Command $strictScript 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw ($strictEntrypointOutput -join [Environment]::NewLine)
+        }
+
+        Add-CheckResult -Name 'Entrypoint Strict Mode' -Success $true -Detail 'summary, note, and schema ran through toi.ps1 under strict mode.'
+    }
+    catch {
+        Add-CheckResult -Name 'Entrypoint Strict Mode' -Success $false -Detail $_.Exception.Message
     }
 
     try {
@@ -299,6 +321,47 @@ Usage: toi <command> [args]
     finally {
         if ($tempProfilePath) {
             Remove-Item -LiteralPath $tempProfilePath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    try {
+        $externalRepoPath = Join-Path ([System.IO.Path]::GetTempPath()) ("toi-external-repo-self-check-{0}" -f [System.Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $externalRepoPath -Force | Out-Null
+        $gitInitOutput = & git -C $externalRepoPath init 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw ($gitInitOutput -join [Environment]::NewLine)
+        }
+
+        $dashboardOutput = (& {
+                Push-Location $externalRepoPath
+                try {
+                    $ErrorActionPreference = 'Stop'
+                    . (Join-Path $root 'lib\output.ps1')
+                    . (Join-Path $root 'lib\git.ps1')
+                    . (Join-Path $root 'commands\dashboard.ps1')
+                    Invoke-ToiCommand -Arguments @()
+                }
+                finally {
+                    Pop-Location
+                }
+            } 6>&1 | Out-String)
+
+        if ($dashboardOutput -match 'contracts/toi-schema\.json is missing') {
+            throw 'Dashboard looked for TOI contract files in the target repository.'
+        }
+
+        if ($dashboardOutput -notmatch 'Committed schema snapshot matches current contract output') {
+            throw 'Dashboard did not use the installed TOI contract snapshot.'
+        }
+
+        Add-CheckResult -Name 'External Repo Contract Status' -Success $true -Detail 'Dashboard used installed TOI contract snapshot outside the TOI repo.'
+    }
+    catch {
+        Add-CheckResult -Name 'External Repo Contract Status' -Success $false -Detail $_.Exception.Message
+    }
+    finally {
+        if ($externalRepoPath -and (Test-Path -LiteralPath $externalRepoPath)) {
+            Remove-Item -LiteralPath $externalRepoPath -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 

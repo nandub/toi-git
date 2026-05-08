@@ -3,18 +3,22 @@ function Invoke-ToiCommand {
 
     Assert-InGitRepository
 
-    $json = $Arguments -contains '-Json'
-    $snapshot = $Arguments -contains '-Snapshot'
-    $writeSnapshot = $Arguments -contains '-WriteSnapshot'
-    $checkSnapshot = $Arguments -contains '-CheckSnapshot'
-    $bumpIndex = [Array]::IndexOf($Arguments, '-BumpVersion')
+    $argumentList = @()
+    if ($null -ne $Arguments) {
+        $argumentList = @($Arguments)
+    }
+    $json = $argumentList -contains '-Json'
+    $snapshot = $argumentList -contains '-Snapshot'
+    $writeSnapshot = $argumentList -contains '-WriteSnapshot'
+    $checkSnapshot = $argumentList -contains '-CheckSnapshot'
+    $bumpIndex = [Array]::IndexOf($argumentList, '-BumpVersion')
     $bumpKind = $null
     if ($bumpIndex -ge 0) {
-        if ($bumpIndex + 1 -ge $Arguments.Count) {
+        if ($bumpIndex + 1 -ge $argumentList.Count) {
             throw 'Expected one of: major, minor, patch after -BumpVersion.'
         }
 
-        $bumpKind = $Arguments[$bumpIndex + 1].ToLowerInvariant()
+        $bumpKind = $argumentList[$bumpIndex + 1].ToLowerInvariant()
         if (@('major', 'minor', 'patch') -notcontains $bumpKind) {
             throw "Invalid bump kind '$bumpKind'. Expected one of: major, minor, patch."
         }

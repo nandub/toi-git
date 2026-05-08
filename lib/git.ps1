@@ -1,3 +1,11 @@
+if (-not (Get-Variable -Name ToiLibraryRoot -Scope Script -ErrorAction SilentlyContinue)) {
+    $script:ToiLibraryRoot = Split-Path -Parent $PSCommandPath
+}
+
+function Get-ToiInstallRoot {
+    return [System.IO.Path]::GetFullPath((Join-Path $script:ToiLibraryRoot '..'))
+}
+
 function Invoke-Git {
     param(
         [Parameter(Mandatory = $true)]
@@ -2572,7 +2580,7 @@ function Convert-ToiReportToMarkdown {
 }
 
 function Get-ToiContractVersion {
-    $versionPath = Join-Path (Get-RepositoryRoot) 'contracts\contract-version.txt'
+    $versionPath = Join-Path (Get-ToiInstallRoot) 'contracts\contract-version.txt'
 
     if (-not (Test-Path -LiteralPath $versionPath)) {
         return '1.0.0'
@@ -2596,7 +2604,7 @@ function Test-ToiValidContractVersion {
 }
 
 function Get-ToiContractSnapshotPath {
-    return (Join-Path (Get-RepositoryRoot) 'contracts\toi-schema.json')
+    return (Join-Path (Get-ToiInstallRoot) 'contracts\toi-schema.json')
 }
 
 function Set-ToiContractVersion {
@@ -2609,7 +2617,7 @@ function Set-ToiContractVersion {
         throw "Invalid contract version '$Version'. Expected semantic versioning like 1.2.3."
     }
 
-    $versionPath = Join-Path (Get-RepositoryRoot) 'contracts\contract-version.txt'
+    $versionPath = Join-Path (Get-ToiInstallRoot) 'contracts\contract-version.txt'
     $directory = Split-Path -Parent $versionPath
     if (-not (Test-Path -LiteralPath $directory)) {
         New-Item -ItemType Directory -Path $directory -Force | Out-Null

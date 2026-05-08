@@ -10,6 +10,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$normalizedArguments = @()
+if ($null -ne $Arguments) {
+    $normalizedArguments = @($Arguments)
+}
 
 . (Join-Path $root 'lib\output.ps1')
 . (Join-Path $root 'lib\git.ps1')
@@ -106,5 +110,5 @@ if ($normalizedCommand -eq 'help') {
 
 $commandPath = $commandMap[$normalizedCommand]
 . $commandPath
-Invoke-ToiCommand -Arguments $Arguments
+Invoke-ToiCommand -Arguments $normalizedArguments
 

@@ -4,10 +4,11 @@ function Invoke-ToiCommand {
     Assert-InGitRepository
 
     $branch = Get-CurrentBranchName
-    $statusLines = Get-StatusLines | Select-Object -Skip 1
+    $branchDisplay = if ($branch) { $branch } else { '(detached HEAD)' }
+    $statusLines = @(Get-StatusLines | Select-Object -Skip 1)
 
     Write-Section 'Summary'
-    Write-Host "Branch: $branch"
+    Write-Host "Branch: $branchDisplay"
     Write-Host "Changed files: $($statusLines.Count)"
 
     Write-Section 'Recent Commits'

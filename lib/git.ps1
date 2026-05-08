@@ -509,7 +509,8 @@ function Register-ToiArgumentCompleter {
 }
 
 function Test-ToiArgumentCompleterRegistered {
-    return ($global:ToiArgumentCompleterRegistry -is [hashtable] -and $global:ToiArgumentCompleterRegistry.Count -gt 0)
+    $registry = Get-Variable -Name ToiArgumentCompleterRegistry -Scope Global -ErrorAction SilentlyContinue
+    return ($registry -and $registry.Value -is [hashtable] -and $registry.Value.Count -gt 0)
 }
 
 function Get-ToiCompletionRegistrationScript {

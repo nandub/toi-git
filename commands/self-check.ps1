@@ -210,7 +210,8 @@ Usage: toi <command> [args]
             @{ Name = 'Ship Strict Mode'; Path = 'commands\ship.ps1' },
             @{ Name = 'Summary Strict Mode'; Path = 'commands\summary.ps1' },
             @{ Name = 'Note Strict Mode'; Path = 'commands\note.ps1' },
-            @{ Name = 'Schema Strict Mode'; Path = 'commands\schema.ps1' }
+            @{ Name = 'Schema Strict Mode'; Path = 'commands\schema.ps1' },
+            @{ Name = 'Completion Strict Mode'; Path = 'commands\completion.ps1' }
         )) {
         try {
             $strictOutput = (& {
